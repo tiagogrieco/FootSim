@@ -1,0 +1,342 @@
+[
+  {
+    "id": 1,
+    "name": "Atlético Mineiro",
+    "shortName": "CAM",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 75,
+    "budget": 18000000,
+    "wageBudget": 950000,
+    "infrastructure": 72,
+    "colors": {
+      "primary": "#1a1a1a",
+      "secondary": "#ffffff"
+    },
+    "formation": "3-5-2",
+    "mentality": "attacking"
+  },
+  {
+    "id": 2,
+    "name": "Palmeiras",
+    "shortName": "PAL",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 85,
+    "budget": 40000000,
+    "wageBudget": 1800000,
+    "infrastructure": 88,
+    "colors": {
+      "primary": "#006437",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-1-4-1",
+    "mentality": "balanced"
+  },
+  {
+    "id": 3,
+    "name": "Flamengo",
+    "shortName": "FLA",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 88,
+    "budget": 45000000,
+    "wageBudget": 2000000,
+    "infrastructure": 85,
+    "colors": {
+      "primary": "#c4161c",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "4-3-3",
+    "mentality": "defensive"
+  },
+  {
+    "id": 4,
+    "name": "São Paulo",
+    "shortName": "SPF",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 80,
+    "budget": 30000000,
+    "wageBudget": 1400000,
+    "infrastructure": 78,
+    "colors": {
+      "primary": "#ffffff",
+      "secondary": "#c4161c"
+    },
+    "formation": "4-4-2",
+    "mentality": "defensive"
+  },
+  {
+    "id": 5,
+    "name": "Internacional",
+    "shortName": "INT",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 78,
+    "budget": 25000000,
+    "wageBudget": 1200000,
+    "infrastructure": 75,
+    "colors": {
+      "primary": "#c4161c",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-3-3",
+    "mentality": "balanced"
+  },
+  {
+    "id": 6,
+    "name": "Grêmio",
+    "shortName": "GRE",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 76,
+    "budget": 22000000,
+    "wageBudget": 1100000,
+    "infrastructure": 74,
+    "colors": {
+      "primary": "#0091d2",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "3-5-2",
+    "mentality": "balanced"
+  },
+  {
+    "id": 7,
+    "name": "Cruzeiro",
+    "shortName": "CRU",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 73,
+    "budget": 20000000,
+    "wageBudget": 1000000,
+    "infrastructure": 70,
+    "colors": {
+      "primary": "#003399",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-2-3-1",
+    "mentality": "balanced"
+  },
+  {
+    "id": 8,
+    "name": "Botafogo",
+    "shortName": "BOT",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 77,
+    "budget": 28000000,
+    "wageBudget": 1300000,
+    "infrastructure": 72,
+    "colors": {
+      "primary": "#1a1a1a",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-3-3",
+    "mentality": "defensive"
+  },
+  {
+    "id": 9,
+    "name": "Corinthians",
+    "shortName": "COR",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 80,
+    "budget": 25000000,
+    "wageBudget": 1200000,
+    "infrastructure": 75,
+    "colors": {
+      "primary": "#1a1a1a",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-4-2",
+    "mentality": "attacking"
+  },
+  {
+    "id": 10,
+    "name": "Fluminense",
+    "shortName": "FLU",
+    "country": "Brasil",
+    "league": "Série A",
+    "reputation": 76,
+    "budget": 18000000,
+    "wageBudget": 900000,
+    "infrastructure": 70,
+    "colors": {
+      "primary": "#7b2d3f",
+      "secondary": "#006400"
+    },
+    "formation": "3-5-2",
+    "mentality": "attacking"
+  },
+  {
+    "id": 11,
+    "name": "Vasco da Gama",
+    "shortName": "VAS",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 72,
+    "budget": 15000000,
+    "wageBudget": 800000,
+    "infrastructure": 68,
+    "colors": {
+      "primary": "#ffffff",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "4-2-3-1",
+    "mentality": "attacking"
+  },
+  {
+    "id": 12,
+    "name": "Santos",
+    "shortName": "SAN",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 74,
+    "budget": 16000000,
+    "wageBudget": 850000,
+    "infrastructure": 75,
+    "colors": {
+      "primary": "#ffffff",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "4-3-3",
+    "mentality": "attacking"
+  },
+  {
+    "id": 13,
+    "name": "Sport Recife",
+    "shortName": "SPO",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 68,
+    "budget": 10000000,
+    "wageBudget": 500000,
+    "infrastructure": 65,
+    "colors": {
+      "primary": "#c4161c",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "4-4-2",
+    "mentality": "balanced"
+  },
+  {
+    "id": 14,
+    "name": "Ceará",
+    "shortName": "CEA",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 69,
+    "budget": 12000000,
+    "wageBudget": 600000,
+    "infrastructure": 66,
+    "colors": {
+      "primary": "#1a1a1a",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-3-3",
+    "mentality": "attacking"
+  },
+  {
+    "id": 15,
+    "name": "Goiás",
+    "shortName": "GOI",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 67,
+    "budget": 9000000,
+    "wageBudget": 450000,
+    "infrastructure": 64,
+    "colors": {
+      "primary": "#006437",
+      "secondary": "#ffffff"
+    },
+    "formation": "3-5-2",
+    "mentality": "defensive"
+  },
+  {
+    "id": 16,
+    "name": "Coritiba",
+    "shortName": "CFC",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 68,
+    "budget": 11000000,
+    "wageBudget": 550000,
+    "infrastructure": 65,
+    "colors": {
+      "primary": "#006437",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-2-3-1",
+    "mentality": "balanced"
+  },
+  {
+    "id": 17,
+    "name": "América Mineiro",
+    "shortName": "AME",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 65,
+    "budget": 8000000,
+    "wageBudget": 400000,
+    "infrastructure": 62,
+    "colors": {
+      "primary": "#006437",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "4-4-2",
+    "mentality": "balanced"
+  },
+  {
+    "id": 18,
+    "name": "Juventude",
+    "shortName": "JUV",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 64,
+    "budget": 7500000,
+    "wageBudget": 350000,
+    "infrastructure": 60,
+    "colors": {
+      "primary": "#006437",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-1-4-1",
+    "mentality": "defensive"
+  },
+  {
+    "id": 19,
+    "name": "Vila Nova",
+    "shortName": "VIL",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 62,
+    "budget": 6000000,
+    "wageBudget": 300000,
+    "infrastructure": 58,
+    "colors": {
+      "primary": "#c4161c",
+      "secondary": "#ffffff"
+    },
+    "formation": "4-3-3",
+    "mentality": "attacking"
+  },
+  {
+    "id": 20,
+    "name": "Novorizontino",
+    "shortName": "NOV",
+    "country": "Brasil",
+    "league": "Série B",
+    "reputation": 60,
+    "budget": 5000000,
+    "wageBudget": 250000,
+    "infrastructure": 55,
+    "colors": {
+      "primary": "#f59e0b",
+      "secondary": "#1a1a1a"
+    },
+    "formation": "3-5-2",
+    "mentality": "defensive"
+  }
+]
