@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { getAttrColor } from "../types/game";
 import type { PlayerAttributes } from "../types/game";
-import type { TrainingProgram } from "../engine/trainingEngine";
+import type { TrainingProgram, TrainingIntensity } from "../engine/trainingEngine";
+import { INTENSITY_CONFIG } from "../engine/trainingEngine";
+import { STAFF_EFFECTS } from "../types/staff";
 
 const TRAINING_OPTIONS: { key: keyof PlayerAttributes; label: string; icon: string; desc: string }[] = [
   { key: "pace", label: "Velocidade", icon: "⚡", desc: "Sprints, agilidade e aceleração" },
@@ -23,24 +25,36 @@ const PROGRAM_OPTIONS: { key: TrainingProgram; label: string; icon: string; desc
   { key: "fitness", label: "Físico", icon: "🏃", desc: "Preparação física geral", boosts: "FIS ++ VEL ++" },
 ];
 
+const INTENSITY_OPTIONS: { key: TrainingIntensity; label: string; icon: string; desc: string; color: string }[] = [
+  { key: "light", label: "Leve", icon: "🟢", desc: "Baixo risco, pouco crescimento, recupera fitness", color: "#10b981" },
+  { key: "normal", label: "Normal", icon: "🟡", desc: "Equilíbrio entre crescimento e risco", color: "#f59e0b" },
+  { key: "intense", label: "Intenso", icon: "🔴", desc: "Máximo crescimento, alto risco de lesão", color: "#ef4444" },
+];
+
 type FocusMode = "team" | "individual" | "positional";
 
 export default function TrainingView() {
   const {
     playerSquad, trainingFocus, setTrainingFocus,
     advanceMonth, playerClub, lastTrainingReport,
+    trainingHistory, staffPool, hireStaff, fireStaff, budget,
   } = useGame();
   const navigate = useNavigate();
 
   const [justTrained, setJustTrained] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [focusMode, setFocusMode] = useState<FocusMode>(trainingFocus.type);
+  const [intensity, setIntensity] = useState<TrainingIntensity>(trainingFocus.intensity || "normal");
 
   const handleTrain = () => {
-    advanceMonth();
-    setJustTrained(true);
-    setShowReport(true);
-    setTimeout(() => setJustTrained(false), 2000);
+    // Apply intensity to the current focus
+    setTrainingFocus({ ...trainingFocus, intensity });
+    setTimeout(() => {
+      advanceMonth();
+      setJustTrained(true);
+      setShowReport(true);
+      setTimeout(() => setJustTrained(false), 2000);
+    }, 50);
   };
 
   const avgFitness = playerSquad.length
@@ -50,7 +64,9 @@ export default function TrainingView() {
     ? Math.round(playerSquad.reduce((s, p) => s + p.morale, 0) / playerSquad.length)
     : 0;
 
+  const injuredPlayers = playerSquad.filter(p => p.injuryDays && p.injuryDays > 0);
   const prospects = [...playerSquad]
+    .filter(p => !p.injuryDays)
     .map(p => ({ ...p, gap: p.potentialAbility - p.currentAbility }))
     .sort((a, b) => b.gap - a.gap)
     .slice(0, 5);
@@ -70,7 +86,7 @@ export default function TrainingView() {
         </button>
       </div>
 
-      {/* Training Report Modal */}
+      {/* ========== TRAINING REPORT MODAL ========== */}
       {showReport && report && (
         <div style={styles.reportOverlay} onClick={() => setShowReport(false)}>
           <div style={styles.reportModal} onClick={e => e.stopPropagation()}>
@@ -90,9 +106,12 @@ export default function TrainingView() {
                 <span style={{ fontWeight: 700, fontSize: "13px" }}>{report.focusLabel}</span>
               </div>
               <div style={styles.summaryCard}>
-                <span style={styles.summaryLabel}>Infra</span>
-                <span style={{ fontWeight: 800, color: getAttrColor(report.infrastructure), fontSize: "16px" }}>
-                  {report.infrastructure}
+                <span style={styles.summaryLabel}>Intensidade</span>
+                <span style={{
+                  fontWeight: 800, fontSize: "13px",
+                  color: report.intensity === "intense" ? "#ef4444" : report.intensity === "light" ? "#10b981" : "#f59e0b",
+                }}>
+                  {INTENSITY_CONFIG[report.intensity].label}
                 </span>
               </div>
               <div style={styles.summaryCard}>
@@ -114,13 +133,26 @@ export default function TrainingView() {
               )}
             </div>
 
+            {/* New Injuries */}
+            {report.newInjuries.length > 0 && (
+              <div style={styles.injuryBanner}>
+                🏥 <strong>{report.newInjuries.length} lesão(ões) durante o treino:</strong>
+                {report.newInjuries.map(inj => (
+                  <div key={inj.playerId} style={{ marginTop: "4px", fontSize: "12px" }}>
+                    {inj.playerName} — {inj.type} ({inj.weeksRemaining} semanas)
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Player details */}
             <div style={styles.reportList}>
-              {report.players.slice(0, 12).map(pr => {
+              {report.players.slice(0, 15).map(pr => {
                 const caDelta = pr.caAfter - pr.caBefore;
                 return (
                   <div key={pr.playerId} style={styles.reportRow}>
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px" }}>
+                      {pr.injured && <span style={{ fontSize: "14px" }}>🏥</span>}
                       <span
                         style={{ fontWeight: 600, fontSize: "12px", cursor: "pointer" }}
                         onClick={() => navigate(`/game/player/${pr.playerId}`)}
@@ -151,337 +183,320 @@ export default function TrainingView() {
                 );
               })}
             </div>
+
+            <button className="btn-primary" onClick={() => setShowReport(false)} style={{ width: "100%", marginTop: "12px" }}>
+              Fechar Relatório
+            </button>
           </div>
         </div>
       )}
 
-      <div style={styles.content}>
-        {/* Left: Training Focus */}
-        <div style={styles.leftCol}>
-          <div className="card" style={styles.card}>
-            <h3 style={styles.sectionTitle}>🎯 Foco do Treino</h3>
-
-            {/* Mode selector */}
-            <div style={styles.typeRow}>
-              <button
-                onClick={() => { setFocusMode("team"); setTrainingFocus({ type: "team" }); }}
-                style={{ ...styles.typeBtn, ...(focusMode === "team" ? styles.typeBtnActive : {}) }}
-              >👥 Coletivo</button>
-              <button
-                onClick={() => { setFocusMode("individual"); setTrainingFocus({ type: "individual", attribute: "pace" }); }}
-                style={{ ...styles.typeBtn, ...(focusMode === "individual" ? styles.typeBtnActive : {}) }}
-              >🎯 Atributo</button>
-              <button
-                onClick={() => { setFocusMode("positional"); setTrainingFocus({ type: "positional", program: "attack" }); }}
-                style={{ ...styles.typeBtn, ...(focusMode === "positional" ? styles.typeBtnActive : {}) }}
-              >📋 Programa</button>
-            </div>
-
-            {focusMode === "team" && (
-              <div style={styles.teamInfo}>
-                <p style={styles.teamDesc}>
-                  Treino equilibrado para todo o elenco. Melhoria gradual em todos os atributos.
-                </p>
-                <div style={styles.teamBenefits}>
-                  <div style={styles.benefit}>✅ Melhoria uniforme</div>
-                  <div style={styles.benefit}>✅ Boa para moral do grupo</div>
-                  <div style={styles.benefit}>⚠️ Crescimento mais lento</div>
-                </div>
+      {/* ========== INJURED PLAYERS ========== */}
+      {injuredPlayers.length > 0 && (
+        <div className="card" style={{ padding: "16px", marginBottom: "16px", borderLeft: "4px solid #ef4444" }}>
+          <h3 style={styles.sectionTitle}>🏥 Departamento Médico ({injuredPlayers.length})</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            {injuredPlayers.map(p => (
+              <div key={p.id} style={styles.injuryCard}>
+                <span style={{ fontWeight: 700, fontSize: "13px" }}>{p.name}</span>
+                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{p.position}</span>
+                <span style={{ fontSize: "12px", color: "#ef4444", fontWeight: 700 }}>
+                  {Math.ceil((p.injuryDays || 0) / 7)} sem.
+                </span>
               </div>
-            )}
-
-            {focusMode === "individual" && (
-              <div style={styles.attrGrid}>
-                {TRAINING_OPTIONS.map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setTrainingFocus({ type: "individual", attribute: opt.key })}
-                    style={{
-                      ...styles.attrBtn,
-                      ...(trainingFocus.attribute === opt.key ? styles.attrBtnActive : {}),
-                    }}
-                  >
-                    <span style={styles.attrIcon}>{opt.icon}</span>
-                    <div style={styles.attrInfo}>
-                      <span style={styles.attrLabel}>{opt.label}</span>
-                      <span style={styles.attrDesc}>{opt.desc}</span>
-                    </div>
-                    {trainingFocus.attribute === opt.key && (
-                      <span style={styles.checkmark}>✓</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {focusMode === "positional" && (
-              <div style={styles.attrGrid}>
-                {PROGRAM_OPTIONS.map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setTrainingFocus({ type: "positional", program: opt.key })}
-                    style={{
-                      ...styles.programBtn,
-                      ...(trainingFocus.program === opt.key ? styles.attrBtnActive : {}),
-                    }}
-                  >
-                    <span style={styles.attrIcon}>{opt.icon}</span>
-                    <div style={{ ...styles.attrInfo, flex: 1 }}>
-                      <span style={styles.attrLabel}>{opt.label}</span>
-                      <span style={styles.attrDesc}>{opt.desc}</span>
-                      <span style={styles.boostTag}>{opt.boosts}</span>
-                    </div>
-                    {trainingFocus.program === opt.key && (
-                      <span style={styles.checkmark}>✓</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+            ))}
           </div>
+        </div>
+      )}
 
-          {/* Infrastructure */}
-          <div className="card" style={styles.card}>
-            <h3 style={styles.sectionTitle}>🏟️ Infraestrutura</h3>
-            <div style={styles.infraRow}>
-              <div style={styles.infraBar}>
-                <div style={{
-                  ...styles.infraFill,
-                  width: `${playerClub.infrastructure}%`,
-                  background: `linear-gradient(90deg, ${getAttrColor(playerClub.infrastructure)}aa, ${getAttrColor(playerClub.infrastructure)})`,
-                }} />
-              </div>
-              <span style={{
-                fontWeight: 900, fontSize: "18px",
-                color: getAttrColor(playerClub.infrastructure),
+      {/* ========== STAFF ========== */}
+      <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
+        <h3 style={styles.sectionTitle}>👔 Comissão Técnica</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
+          {staffPool.map(member => {
+            const effect = STAFF_EFFECTS[member.role];
+            const isHired = member.hired;
+            return (
+              <div key={member.id} style={{
+                padding: "10px", borderRadius: "8px",
+                background: isHired ? "rgba(16,185,129,0.08)" : "var(--color-bg-secondary)",
+                border: `1px solid ${isHired ? "#10b981" : "var(--color-border)"}`,
+                opacity: isHired ? 1 : 0.7,
               }}>
-                {playerClub.infrastructure}
-              </span>
-            </div>
-            <p style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "8px" }}>
-              Infraestrutura melhor = treinos mais eficientes. Impacta diretamente o desenvolvimento.
-            </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700 }}>{effect.icon} {member.name}</span>
+                  <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                    Q{member.quality}{isHired && ` • 😊 ${member.satisfaction ?? 75}%`}
+                  </span>
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+                  {effect.label} — {effect.desc}
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "6px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-accent-secondary)" }}>
+                    R$ {(member.wage / 1000).toFixed(0)}K/mês
+                  </span>
+                  {isHired ? (
+                    <button className="btn-secondary" onClick={() => fireStaff(member.id)} style={{ fontSize: "10px", padding: "2px 8px" }}>Demitir</button>
+                  ) : (
+                    <button className="btn-primary" onClick={() => hireStaff(member.id)} disabled={budget < member.wage * 12} style={{ fontSize: "10px", padding: "2px 8px" }}>Contratar</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ========== INTENSITY SELECTOR ========== */}
+      <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
+        <h3 style={styles.sectionTitle}>⚡ Intensidade do Treino</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
+          {INTENSITY_OPTIONS.map(opt => (
+            <button
+              key={opt.key}
+              onClick={() => {
+                setIntensity(opt.key);
+                setTrainingFocus({ ...trainingFocus, intensity: opt.key });
+              }}
+              style={{
+                padding: "14px 12px", borderRadius: "10px", cursor: "pointer",
+                background: intensity === opt.key ? `${opt.color}18` : "var(--color-bg-secondary)",
+                border: intensity === opt.key ? `2px solid ${opt.color}` : "2px solid transparent",
+                textAlign: "left", transition: "all 0.2s",
+              }}
+            >
+              <div style={{ fontSize: "16px", fontWeight: 800, marginBottom: "4px" }}>
+                {opt.icon} {opt.label}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{opt.desc}</div>
+              <div style={{ fontSize: "10px", color: opt.color, fontWeight: 700, marginTop: "6px" }}>
+                Crescimento: ×{INTENSITY_CONFIG[opt.key].growthMult} • Risco: {Math.round(INTENSITY_CONFIG[opt.key].injuryBaseChance * 100)}%
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ========== SQUAD STATUS ========== */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "16px" }}>
+        <div className="card" style={{ padding: "20px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>Fitness Médio</div>
+          <div style={{ fontSize: "28px", fontWeight: 900, color: getAttrColor(avgFitness) }}>{avgFitness}%</div>
+        </div>
+        <div className="card" style={{ padding: "20px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>Moral Médio</div>
+          <div style={{ fontSize: "28px", fontWeight: 900, color: getAttrColor(avgMorale) }}>{avgMorale}%</div>
+        </div>
+        <div className="card" style={{ padding: "20px", textAlign: "center" }}>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>Infraestrutura</div>
+          <div style={{ fontSize: "28px", fontWeight: 900, color: getAttrColor(playerClub.infrastructure) }}>{playerClub.infrastructure}</div>
+        </div>
+      </div>
+
+      {/* ========== TRAINING HISTORY ========== */}
+      {trainingHistory.length > 0 && (
+        <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
+          <h3 style={styles.sectionTitle}>📈 Histórico de Evolução (CA médio)</h3>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: "4px", height: "60px" }}>
+            {trainingHistory.map((h, i) => {
+              const val = h.avgGrowth;
+              const maxAbs = Math.max(1, ...trainingHistory.map(t => Math.abs(t.avgGrowth)));
+              const barH = Math.max(4, (Math.abs(val) / maxAbs) * 50);
+              return (
+                <div key={i} style={{
+                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end",
+                }}>
+                  <div style={{
+                    width: "100%", height: `${barH}px`, borderRadius: "3px 3px 0 0",
+                    background: val >= 0 ? "#10b981" : "#ef4444",
+                  }}
+                    title={`${val >= 0 ? "+" : ""}${val.toFixed(1)} CA (${h.focusLabel}, ${INTENSITY_CONFIG[h.intensity].label})`}
+                  />
+                  <span style={{ fontSize: "9px", color: "var(--color-text-muted)", marginTop: "3px" }}>
+                    M{h.month}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
+      )}
 
-        {/* Right: Team Status + Prospects */}
-        <div style={styles.rightCol}>
-          {/* Team Condition */}
-          <div className="card" style={styles.card}>
-            <h3 style={styles.sectionTitle}>📊 Condição do Elenco</h3>
-            <div style={styles.condGrid}>
-              <div style={styles.condItem}>
-                <span style={styles.condLabel}>Fitness Médio</span>
-                <span style={{ ...styles.condValue, color: getAttrColor(avgFitness) }}>{avgFitness}%</span>
-              </div>
-              <div style={styles.condItem}>
-                <span style={styles.condLabel}>Moral Média</span>
-                <span style={{ ...styles.condValue, color: getAttrColor(avgMorale) }}>{avgMorale}%</span>
-              </div>
-              <div style={styles.condItem}>
-                <span style={styles.condLabel}>Total Jogadores</span>
-                <span style={styles.condValue}>{playerSquad.length}</span>
-              </div>
-              <div style={styles.condItem}>
-                <span style={styles.condLabel}>Jovens (≤21)</span>
-                <span style={styles.condValue}>{playerSquad.filter(p => p.age <= 21).length}</span>
-              </div>
-            </div>
-          </div>
+      {/* ========== FOCUS MODE SELECTOR ========== */}
+      <div style={styles.focusTabs}>
+        {(["team", "individual", "positional"] as FocusMode[]).map(mode => (
+          <button
+            key={mode}
+            className={focusMode === mode ? "btn-primary" : "btn-secondary"}
+            onClick={() => {
+              setFocusMode(mode);
+              if (mode === "team") setTrainingFocus({ type: "team", intensity });
+            }}
+            style={{ flex: 1, fontSize: "12px" }}
+          >
+            {mode === "team" ? "🏟️ Coletivo" : mode === "individual" ? "🎯 Individual" : "📋 Programa"}
+          </button>
+        ))}
+      </div>
 
-          {/* Top Prospects */}
-          <div className="card" style={styles.card}>
-            <h3 style={styles.sectionTitle}>🌟 Maiores Potenciais</h3>
-            <div style={styles.prospectList}>
-              {prospects.map(p => (
-                <div key={p.id} style={styles.prospectRow}>
-                  <div style={styles.prospectInfo}>
-                    <span
-                      style={{ fontWeight: 600, fontSize: "13px", cursor: "pointer" }}
-                      onClick={() => navigate(`/game/player/${p.id}`)}
-                      onMouseEnter={e => (e.currentTarget.style.color = "var(--color-accent-primary)")}
-                      onMouseLeave={e => (e.currentTarget.style.color = "var(--color-text-primary)")}
-                    >{p.name}</span>
-                    <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-                      {p.position} • {p.age} anos
-                    </span>
-                  </div>
-                  <div style={styles.prospectBars}>
-                    <div style={styles.caBox}>
-                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>CA</span>
-                      <span style={{ fontWeight: 700, color: getAttrColor(p.currentAbility) }}>{p.currentAbility}</span>
-                    </div>
-                    <div style={styles.progressOuter}>
-                      <div style={{
-                        height: "100%", borderRadius: "3px",
-                        width: `${(p.currentAbility / p.potentialAbility) * 100}%`,
-                        background: `linear-gradient(90deg, ${getAttrColor(p.currentAbility)}, ${getAttrColor(p.potentialAbility)})`,
-                        transition: "width 0.5s ease",
-                      }} />
-                    </div>
-                    <div style={styles.caBox}>
-                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>PA</span>
-                      <span style={{ fontWeight: 700, color: getAttrColor(p.potentialAbility) }}>{p.potentialAbility}</span>
-                    </div>
-                    <span style={{
-                      fontSize: "12px", fontWeight: 800, width: "36px", textAlign: "right",
-                      color: p.gap > 10 ? "#10b981" : p.gap > 5 ? "#f59e0b" : "#94a3b8",
-                    }}>+{p.gap}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Full Squad Fitness/Morale */}
-          <div className="card" style={{ ...styles.card, flex: 1, overflow: "auto" }}>
-            <h3 style={styles.sectionTitle}>🏃 Condição Individual</h3>
-            <div style={styles.condList}>
-              {[...playerSquad].sort((a, b) => a.fitness - b.fitness).map(p => (
-                <div key={p.id} style={styles.condRow}>
-                  <span style={{ fontSize: "12px", flex: 1, fontWeight: 500 }}>{p.name}</span>
-                  <span style={{ fontSize: "11px", color: "var(--color-text-muted)", width: "32px" }}>{p.position}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "80px" }}>
-                    <div className="attr-bar" style={{ width: "50px" }}>
-                      <div className="attr-bar-fill" style={{
-                        width: `${p.fitness}%`,
-                        background: getAttrColor(p.fitness),
-                      }} />
-                    </div>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: getAttrColor(p.fitness), width: "24px", textAlign: "right" }}>
-                      {p.fitness}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "80px" }}>
-                    <div className="attr-bar" style={{ width: "50px" }}>
-                      <div className="attr-bar-fill" style={{
-                        width: `${p.morale}%`,
-                        background: getAttrColor(p.morale),
-                      }} />
-                    </div>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: getAttrColor(p.morale), width: "24px", textAlign: "right" }}>
-                      {p.morale}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* Focus Content */}
+      {focusMode === "individual" && (
+        <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
+          <h3 style={styles.sectionTitle}>🎯 Foco Individual — Selecione o Atributo</h3>
+          <div style={styles.optionsGrid}>
+            {TRAINING_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setTrainingFocus({ type: "individual", attribute: opt.key, intensity })}
+                style={{
+                  ...styles.optionCard,
+                  ...(trainingFocus.type === "individual" && trainingFocus.attribute === opt.key ? styles.optionActive : {}),
+                }}
+              >
+                <div style={{ fontSize: "22px" }}>{opt.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: "13px" }}>{opt.label}</div>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{opt.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
+      )}
+
+      {focusMode === "positional" && (
+        <div className="card" style={{ padding: "16px", marginBottom: "16px" }}>
+          <h3 style={styles.sectionTitle}>📋 Programa de Treino — Selecione</h3>
+          <div style={styles.programsGrid}>
+            {PROGRAM_OPTIONS.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setTrainingFocus({ type: "positional", program: opt.key, intensity })}
+                style={{
+                  ...styles.programCard,
+                  ...(trainingFocus.type === "positional" && trainingFocus.program === opt.key ? styles.programActive : {}),
+                }}
+              >
+                <div style={{ fontSize: "28px" }}>{opt.icon}</div>
+                <div style={{ fontWeight: 800, fontSize: "14px" }}>{opt.label}</div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{opt.desc}</div>
+                <div style={{
+                  fontSize: "10px", marginTop: "6px", padding: "2px 8px", borderRadius: "4px",
+                  background: "var(--color-bg-secondary)", fontWeight: 700, color: "var(--color-accent-primary)",
+                }}>
+                  {opt.boosts}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Prospects */}
+      <div className="card" style={{ padding: "16px" }}>
+        <h3 style={styles.sectionTitle}>🌟 Maiores Potenciais</h3>
+        {prospects.map(p => {
+          const gap = p.potentialAbility - p.currentAbility;
+          return (
+            <div key={p.id} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "8px 0", borderBottom: "1px solid var(--color-border)",
+            }}>
+              <div>
+                <span style={{ fontWeight: 600, fontSize: "13px", cursor: "pointer" }}
+                  onClick={() => navigate(`/game/player/${p.id}`)}
+                >{p.name}</span>
+                <span style={{ fontSize: "11px", color: "var(--color-text-muted)", marginLeft: "8px" }}>
+                  {p.position} • {p.age}a
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: getAttrColor(p.currentAbility) }}>
+                  CA {p.currentAbility}
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>→</span>
+                <span style={{ fontSize: "13px", fontWeight: 700, color: "#3b82f6" }}>
+                  POT {p.potentialAbility}
+                </span>
+                <span style={{
+                  fontSize: "11px", fontWeight: 800, padding: "2px 6px", borderRadius: "4px",
+                  background: "rgba(16,185,129,0.15)", color: "#10b981",
+                }}>
+                  +{gap}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: { padding: "24px", height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexShrink: 0 },
+  page: { padding: "24px", height: "100%", overflow: "auto" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
   title: { fontSize: "24px", fontWeight: 800 },
-  content: { display: "flex", gap: "20px", flex: 1, overflow: "hidden" },
-
-  leftCol: { flex: "0 0 420px", display: "flex", flexDirection: "column", gap: "16px", overflow: "auto" },
-  rightCol: { flex: 1, display: "flex", flexDirection: "column", gap: "16px", overflow: "hidden" },
-
-  card: { padding: "20px" },
-  sectionTitle: { fontSize: "13px", fontWeight: 700, marginBottom: "14px", color: "var(--color-text-secondary)" },
-
-  typeRow: { display: "flex", gap: "6px", marginBottom: "16px" },
-  typeBtn: {
-    flex: 1, padding: "8px", borderRadius: "var(--radius-sm)", fontSize: "11px", fontWeight: 600,
-    background: "var(--color-bg-hover)", border: "1px solid var(--color-border)",
-    color: "var(--color-text-secondary)", cursor: "pointer", fontFamily: "var(--font-sans)",
-    transition: "all 0.15s",
-  },
-  typeBtnActive: {
-    background: "var(--color-accent-primary)", borderColor: "var(--color-accent-primary)", color: "#fff",
-  },
-
-  teamInfo: { padding: "12px", background: "var(--color-bg-hover)", borderRadius: "8px" },
-  teamDesc: { fontSize: "13px", color: "var(--color-text-secondary)", marginBottom: "12px" },
-  teamBenefits: { display: "flex", flexDirection: "column", gap: "4px" },
-  benefit: { fontSize: "12px", color: "var(--color-text-primary)" },
-
-  attrGrid: { display: "flex", flexDirection: "column", gap: "6px" },
-  attrBtn: {
-    display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px",
-    borderRadius: "var(--radius-sm)", background: "var(--color-bg-hover)",
-    border: "1px solid var(--color-border)", cursor: "pointer",
-    fontFamily: "var(--font-sans)", transition: "all 0.15s", textAlign: "left",
-    color: "var(--color-text-primary)",
-  },
-  attrBtnActive: {
-    borderColor: "var(--color-accent-primary)", background: "rgba(16, 185, 129, 0.1)",
-  },
-  programBtn: {
-    display: "flex", alignItems: "center", gap: "12px", padding: "12px 12px",
-    borderRadius: "var(--radius-sm)", background: "var(--color-bg-hover)",
-    border: "1px solid var(--color-border)", cursor: "pointer",
-    fontFamily: "var(--font-sans)", transition: "all 0.15s", textAlign: "left",
-    color: "var(--color-text-primary)",
-  },
-  attrIcon: { fontSize: "20px", width: "28px", textAlign: "center" },
-  attrInfo: { flex: 1, display: "flex", flexDirection: "column", gap: "1px" },
-  attrLabel: { fontSize: "13px", fontWeight: 700 },
-  attrDesc: { fontSize: "10px", color: "var(--color-text-muted)" },
-  boostTag: {
-    fontSize: "9px", fontWeight: 700, color: "#10b981",
-    marginTop: "2px", letterSpacing: "0.3px",
-  },
-  checkmark: { color: "var(--color-accent-primary)", fontWeight: 900, fontSize: "16px" },
-
-  infraRow: { display: "flex", alignItems: "center", gap: "12px" },
-  infraBar: { flex: 1, height: "10px", borderRadius: "5px", background: "var(--color-bg-hover)", overflow: "hidden" },
-  infraFill: { height: "100%", borderRadius: "5px", transition: "width 0.5s ease" },
-
-  condGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
-  condItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", padding: "12px", background: "var(--color-bg-hover)", borderRadius: "8px" },
-  condLabel: { fontSize: "10px", color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" },
-  condValue: { fontSize: "22px", fontWeight: 900, color: "var(--color-accent-primary)" },
-
-  prospectList: { display: "flex", flexDirection: "column", gap: "10px" },
-  prospectRow: { display: "flex", flexDirection: "column", gap: "6px", padding: "8px 0", borderBottom: "1px solid var(--color-border)" },
-  prospectInfo: { display: "flex", justifyContent: "space-between", alignItems: "center" },
-  prospectBars: { display: "flex", alignItems: "center", gap: "8px" },
-  caBox: { display: "flex", flexDirection: "column", alignItems: "center", gap: "1px", minWidth: "28px" },
-  progressOuter: { flex: 1, height: "6px", borderRadius: "3px", background: "var(--color-bg-hover)", overflow: "hidden" },
-
-  condList: { display: "flex", flexDirection: "column", gap: "2px" },
-  condRow: { display: "flex", alignItems: "center", gap: "8px", padding: "4px 0" },
+  sectionTitle: { fontSize: "14px", fontWeight: 700, marginBottom: "12px", color: "var(--color-text-secondary)" },
+  focusTabs: { display: "flex", gap: "8px", marginBottom: "16px" },
 
   // Report modal
   reportOverlay: {
-    position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)",
-    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 1000,
+    display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
   },
   reportModal: {
-    background: "var(--color-bg-secondary)", border: "1px solid var(--color-border)",
-    borderRadius: "16px", padding: "24px", maxWidth: "680px", width: "90%",
-    maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden",
-    boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+    background: "var(--color-bg-primary)", borderRadius: "16px", padding: "24px",
+    width: "100%", maxWidth: "600px", maxHeight: "80vh", overflow: "auto",
+    border: "1px solid var(--color-border)",
   },
   reportHeader: {
-    display: "flex", justifyContent: "space-between", alignItems: "center",
-    marginBottom: "16px", flexShrink: 0,
+    display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px",
   },
   reportSummary: {
-    display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px",
-    marginBottom: "16px", flexShrink: 0,
+    display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: "10px", marginBottom: "16px",
   },
   summaryCard: {
-    display: "flex", flexDirection: "column", alignItems: "center", gap: "4px",
-    padding: "10px 8px", background: "var(--color-bg-hover)", borderRadius: "8px",
-    border: "1px solid var(--color-border)",
+    padding: "10px", borderRadius: "8px", background: "var(--color-bg-secondary)",
+    border: "1px solid var(--color-border)", display: "flex", flexDirection: "column" as const,
+    alignItems: "center", gap: "4px",
   },
-  summaryLabel: {
-    fontSize: "9px", color: "var(--color-text-muted)",
-    textTransform: "uppercase", letterSpacing: "0.3px",
-  },
-  reportList: {
-    flex: 1, overflow: "auto", display: "flex", flexDirection: "column", gap: "6px",
-  },
+  summaryLabel: { fontSize: "10px", color: "var(--color-text-muted)", textTransform: "uppercase" as const },
+  reportList: { display: "flex", flexDirection: "column" as const, gap: "6px" },
   reportRow: {
-    display: "flex", alignItems: "center", gap: "10px",
-    padding: "8px 10px", background: "var(--color-bg-card)", borderRadius: "6px",
-    border: "1px solid var(--color-border)",
+    display: "flex", alignItems: "center", gap: "12px", padding: "6px 8px",
+    borderRadius: "6px", background: "var(--color-bg-secondary)",
+  },
+  injuryBanner: {
+    padding: "12px", borderRadius: "8px", marginBottom: "12px",
+    background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: "13px",
+  },
+
+  // Injury cards
+  injuryCard: {
+    display: "flex", flexDirection: "column" as const, alignItems: "center", gap: "2px",
+    padding: "10px 16px", borderRadius: "8px", background: "rgba(239,68,68,0.08)",
+    border: "1px solid rgba(239,68,68,0.2)",
+  },
+
+  // Options
+  optionsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px" },
+  optionCard: {
+    padding: "14px", borderRadius: "10px", border: "2px solid transparent",
+    background: "var(--color-bg-secondary)", cursor: "pointer", textAlign: "center" as const,
+    transition: "all 0.2s",
+  },
+  optionActive: {
+    border: "2px solid var(--color-accent-primary)",
+    background: "rgba(var(--color-accent-primary-rgb, 59, 130, 246), 0.08)",
+  },
+  programsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "12px" },
+  programCard: {
+    padding: "16px", borderRadius: "12px", border: "2px solid transparent",
+    background: "var(--color-bg-secondary)", cursor: "pointer", textAlign: "center" as const,
+    transition: "all 0.2s",
+  },
+  programActive: {
+    border: "2px solid var(--color-accent-primary)",
+    background: "rgba(var(--color-accent-primary-rgb, 59, 130, 246), 0.08)",
   },
 };

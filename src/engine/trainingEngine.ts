@@ -1,10 +1,13 @@
 import type { Player, PlayerAttributes, PositionCategory } from "../types/game";
 import { calculateCA } from "../types/game";
+import type { StaffMember } from "../types/staff";
+import { getGrowthBonus, getInjuryReduction, getHealingBonus } from "./staffEngine";
 
 export interface TrainingFocus {
   type: "team" | "individual" | "positional";
   attribute?: keyof PlayerAttributes;
   program?: TrainingProgram;
+  intensity?: TrainingIntensity;
 }
 
 export type TrainingProgram =
@@ -13,6 +16,17 @@ export type TrainingProgram =
   | "playmaking"  // passing + dribbling + physical
   | "goalkeeping" // goalkeeping + physical + defending
   | "fitness";    // physical + pace (all positions)
+
+export type TrainingIntensity = "light" | "normal" | "intense";
+
+export interface Injury {
+  playerId: number;
+  playerName: string;
+  position: string;
+  type: string;
+  weeksRemaining: number;
+  severity: "minor" | "moderate" | "severe";
+}
 
 export interface PlayerTrainingReport {
   playerId: number;
@@ -24,17 +38,22 @@ export interface PlayerTrainingReport {
   caAfter: number;
   fitnessBefore: number;
   fitnessAfter: number;
+  injured?: boolean;
+  injuryType?: string;
 }
 
 export interface TrainingReport {
   players: PlayerTrainingReport[];
   focusLabel: string;
   infrastructure: number;
+  intensity: TrainingIntensity;
   topGrower: { name: string; caDelta: number } | null;
   avgGrowth: number;
+  newInjuries: Injury[];
+  month: number;
+  season: number;
 }
 
-// Attribute labels for reports
 const ATTR_LABELS: Record<keyof PlayerAttributes, string> = {
   pace: "Velocidade",
   shooting: "Finalização",
@@ -45,7 +64,6 @@ const ATTR_LABELS: Record<keyof PlayerAttributes, string> = {
   goalkeeping: "Goleiro",
 };
 
-// Positional training programs boost specific attrs
 const PROGRAM_WEIGHTS: Record<TrainingProgram, Partial<Record<keyof PlayerAttributes, number>>> = {
   attack:      { shooting: 2.5, dribbling: 1.5, pace: 1.0 },
   defense:     { defending: 2.5, physical: 1.5, pace: 1.0 },
@@ -54,13 +72,34 @@ const PROGRAM_WEIGHTS: Record<TrainingProgram, Partial<Record<keyof PlayerAttrib
   fitness:     { physical: 2.0, pace: 2.0 },
 };
 
-// Which program benefits which position most
 const POSITION_PROGRAM_AFFINITY: Record<PositionCategory, TrainingProgram[]> = {
   GK:  ["goalkeeping", "fitness"],
   DEF: ["defense", "fitness", "playmaking"],
   MID: ["playmaking", "attack", "defense"],
   FWD: ["attack", "fitness", "playmaking"],
 };
+
+const INTENSITY_CONFIG: Record<TrainingIntensity, {
+  growthMult: number;
+  fatigueMult: number;
+  injuryBaseChance: number;
+  fitnessRange: [number, number];
+  label: string;
+}> = {
+  light:   { growthMult: 0.6,  fatigueMult: 0.5,  injuryBaseChance: 0.01, fitnessRange: [8, 16],   label: "Leve" },
+  normal:  { growthMult: 1.0,  fatigueMult: 1.0,  injuryBaseChance: 0.04, fitnessRange: [3, 8],  label: "Normal" },
+  intense: { growthMult: 1.5,  fatigueMult: 1.8,  injuryBaseChance: 0.10, fitnessRange: [-3, 4],  label: "Intenso" },
+};
+
+const INJURY_TYPES: { name: string; minWeeks: number; maxWeeks: number; severity: Injury["severity"] }[] = [
+  { name: "Fadiga muscular", minWeeks: 1, maxWeeks: 2, severity: "minor" },
+  { name: "Contusão leve", minWeeks: 1, maxWeeks: 2, severity: "minor" },
+  { name: "Estiramento", minWeeks: 2, maxWeeks: 4, severity: "moderate" },
+  { name: "Distensão muscular", minWeeks: 2, maxWeeks: 4, severity: "moderate" },
+  { name: "Entorse no tornozelo", minWeeks: 3, maxWeeks: 5, severity: "moderate" },
+  { name: "Lesão no joelho", minWeeks: 4, maxWeeks: 8, severity: "severe" },
+  { name: "Ruptura muscular", minWeeks: 4, maxWeeks: 6, severity: "severe" },
+];
 
 function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -88,15 +127,91 @@ function getFocusLabel(focus: TrainingFocus): string {
   return "Treino";
 }
 
+function rollInjury(player: Player, intensity: TrainingIntensity, reduction = 0): Injury | null {
+  const config = INTENSITY_CONFIG[intensity];
+  let chance = config.injuryBaseChance * (1 - reduction);
+
+  // Low fitness increases injury risk significantly
+  if (player.fitness < 50) chance *= 3.0;
+  else if (player.fitness < 65) chance *= 2.0;
+  else if (player.fitness < 80) chance *= 1.3;
+
+  // Age increases risk
+  if (player.age > 32) chance *= 1.8;
+  else if (player.age > 29) chance *= 1.3;
+
+  // Already injured players can't get injured again
+  if (player.injuryDays && player.injuryDays > 0) return null;
+
+  if (Math.random() < chance) {
+    // Severity influenced by intensity
+    let poolEnd = INJURY_TYPES.length;
+    if (intensity === "light") poolEnd = 4; // only minor/moderate
+    else if (intensity === "normal") poolEnd = 5;
+
+    const injuryTemplate = INJURY_TYPES[rand(0, poolEnd - 1)];
+    const weeks = rand(injuryTemplate.minWeeks, injuryTemplate.maxWeeks);
+
+    return {
+      playerId: player.id,
+      playerName: player.name,
+      position: player.position,
+      type: injuryTemplate.name,
+      weeksRemaining: weeks,
+      severity: injuryTemplate.severity,
+    };
+  }
+
+  return null;
+}
+
 /**
- * Monthly player development with full report
+ * Monthly player development with intensity & injury system
  */
 export function developPlayers(
   players: Player[],
   infrastructure: number,
   trainingFocus: TrainingFocus,
-): Player[] {
-  return players.map(player => {
+  staff: StaffMember[] = [],
+): { developed: Player[]; newInjuries: Injury[] } {
+  const intensity: TrainingIntensity = trainingFocus.intensity || "normal";
+  const intensityCfg = INTENSITY_CONFIG[intensity];
+  const growthBonus = getGrowthBonus(staff);
+  const injuryReduction = getInjuryReduction(staff);
+  const healingBonus = getHealingBonus(staff);
+  const newInjuries: Injury[] = [];
+
+  const developed = players.map(player => {
+    // Skip players on strike — they refuse to train
+    if (player.strikeDays && player.strikeDays > 0) {
+      return {
+        ...player,
+        fitness: clamp(player.fitness + rand(3, 8), 50, 95),
+      };
+    }
+
+    // Skip injured players — they rest, don't train
+    if (player.injuryDays && player.injuryDays > 0) {
+      const healRate = Math.round(7 * (1 - healingBonus));
+      const healed = Math.max(0, player.injuryDays - Math.max(3, healRate));
+      return {
+        ...player,
+        injuryDays: healed || undefined,
+        fitness: clamp(player.fitness + rand(3, 8), 50, 95), // recover fitness while resting
+      };
+    }
+
+    // Roll for injury (with staff reduction)
+    const injury = rollInjury(player, intensity, injuryReduction);
+    if (injury) {
+      newInjuries.push(injury);
+      return {
+        ...player,
+        injuryDays: injury.weeksRemaining * 7,
+        fitness: clamp(player.fitness - rand(10, 20), 30, 100),
+      };
+    }
+
     const gap = player.potentialAbility - player.currentAbility;
     const newAttrs = { ...player.attributes };
 
@@ -113,41 +228,46 @@ export function developPlayers(
 
     // Base growth points
     const baseGrowth = gap > 0
-      ? Math.max(0, ageMultiplier * infraBonus * (gap / 30))
-      : ageMultiplier * 0.5;
+      ? Math.max(0, ageMultiplier * infraBonus * (1 + growthBonus) * (gap / 30))
+      : ageMultiplier * 0.5 * (1 + growthBonus);
 
     const attrKeys = Object.keys(newAttrs) as (keyof PlayerAttributes)[];
 
     for (const key of attrKeys) {
       if (key === "goalkeeping" && player.positionCategory !== "GK") continue;
 
-      let growth = baseGrowth + (Math.random() - 0.3) * 1.5;
+      let growth = baseGrowth * intensityCfg.growthMult;
 
       // Individual attribute focus
       if (trainingFocus.type === "individual" && trainingFocus.attribute === key) {
-        growth += rand(1, 3);
+        growth += rand(1, 3) * intensityCfg.growthMult;
       }
 
       // Positional program boost
       if (trainingFocus.type === "positional" && trainingFocus.program) {
         const weights = PROGRAM_WEIGHTS[trainingFocus.program];
         const programBoost = weights[key] || 0;
-
-        // Extra bonus if program matches player's position
         const affinityPrograms = POSITION_PROGRAM_AFFINITY[player.positionCategory];
         const affinityBonus = affinityPrograms.includes(trainingFocus.program) ? 0.5 : 0;
-
-        growth += programBoost + affinityBonus;
+        growth += (programBoost + affinityBonus) * intensityCfg.growthMult;
       }
 
       // Team training gives smaller uniform boost
       if (trainingFocus.type === "team") {
-        growth += rand(0, 1);
+        growth += Math.random() * 1.0;
       }
 
-      // Older players lose physical attributes faster
-      if (player.age > 30 && (key === "pace" || key === "physical")) {
-        growth -= rand(0, 2);
+      // Add a small positive variance for young players, negative for older
+      if (player.age <= 29) {
+        growth += Math.random() * 1.0; 
+        growth = Math.max(0, growth); // Prevent random drops for young players
+      } else {
+        // Older players lose attributes, specially physical ones
+        if (key === "pace" || key === "physical") {
+          growth -= Math.random() * 2.5;
+        } else {
+          growth -= Math.random() * 1.0;
+        }
       }
 
       // Fitness affects training effectiveness
@@ -160,12 +280,14 @@ export function developPlayers(
       newAttrs[key] = clamp(Math.round(newAttrs[key] + growth), 1, 99);
     }
 
-    // Fitness recovery + training fatigue
-    const fitnessDelta = trainingFocus.type === "positional"
-      ? rand(-5, 3) // intensive programs tire players more
-      : rand(-3, 5);
-    const newFitness = clamp(player.fitness + fitnessDelta, 50, 100);
-    const newMorale = clamp(player.morale + rand(-5, 5), 30, 100);
+    // Fitness based on intensity
+    const [fatMin, fatMax] = intensityCfg.fitnessRange;
+    const fitnessDelta = rand(fatMin, fatMax);
+    const newFitness = clamp(player.fitness + fitnessDelta, 40, 100);
+    const newMorale = clamp(
+      player.morale + rand(-3, 5) + (intensity === "light" ? 3 : intensity === "intense" ? -2 : 0),
+      20, 100,
+    );
 
     return {
       ...player,
@@ -175,6 +297,8 @@ export function developPlayers(
       morale: newMorale,
     };
   });
+
+  return { developed, newInjuries };
 }
 
 /**
@@ -185,7 +309,11 @@ export function generateTrainingReport(
   after: Player[],
   focus: TrainingFocus,
   infrastructure: number,
+  newInjuries: Injury[],
+  month: number,
+  season: number,
 ): TrainingReport {
+  const intensity: TrainingIntensity = focus.intensity || "normal";
   const reports: PlayerTrainingReport[] = [];
 
   for (const afterPlayer of after) {
@@ -210,7 +338,9 @@ export function generateTrainingReport(
       }
     }
 
-    if (changes.length > 0) {
+    const injuryInfo = newInjuries.find(inj => inj.playerId === afterPlayer.id);
+
+    if (changes.length > 0 || injuryInfo) {
       reports.push({
         playerId: afterPlayer.id,
         playerName: afterPlayer.name,
@@ -221,6 +351,8 @@ export function generateTrainingReport(
         caAfter: afterPlayer.currentAbility,
         fitnessBefore: beforePlayer.fitness,
         fitnessAfter: afterPlayer.fitness,
+        injured: !!injuryInfo,
+        injuryType: injuryInfo?.type,
       });
     }
   }
@@ -239,9 +371,13 @@ export function generateTrainingReport(
     players: reports,
     focusLabel: getFocusLabel(focus),
     infrastructure,
+    intensity,
     topGrower,
     avgGrowth,
+    newInjuries,
+    month,
+    season,
   };
 }
 
-export { ATTR_LABELS, PROGRAM_WEIGHTS, POSITION_PROGRAM_AFFINITY };
+export { ATTR_LABELS, PROGRAM_WEIGHTS, POSITION_PROGRAM_AFFINITY, INTENSITY_CONFIG };

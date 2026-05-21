@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import type { Player, Position } from "../types/game";
 import { getAttrColor } from "../types/game";
+import { autoBuildLineup, type AutoLineupResult } from "../engine/autoLineupEngine";
 
 type Formation = "4-2-3-1" | "4-3-3" | "4-4-2" | "3-5-2" | "4-1-4-1";
 
@@ -108,14 +110,67 @@ function getBestPlayerForSlot(players: Player[], position: Position, usedIds: Se
 }
 
 export default function TacticsView() {
-  const { playerSquad, playerClub, updateStartingLineup } = useGame();
+  const { playerSquad, playerClub, updateStartingLineup, updateTactics, staff } = useGame();
   const [formation, setFormation] = useState<Formation>(
     (playerClub.formation as Formation) || "4-2-3-1"
   );
   const [mentality, setMentality] = useState(playerClub.mentality);
+
+  const handleFormationChange = (f: Formation) => {
+    setFormation(f);
+    
+    // Calculate new lineup ids for the new formation's slots
+    const newSlots = FORMATIONS[f];
+    const usedIds = new Set<number>();
+    const newIds = newSlots.map((slot, index) => {
+      let player: Player | null = null;
+      if (playerClub.startingLineup && playerClub.startingLineup[index]) {
+         const savedPlayer = playerSquad.find(p => p.id === playerClub.startingLineup![index]);
+         if (savedPlayer && (!savedPlayer.injuryDays || savedPlayer.injuryDays <= 0) && !usedIds.has(savedPlayer.id)) {
+            player = savedPlayer;
+         }
+      }
+      if (!player) {
+         player = getBestPlayerForSlot(playerSquad, slot.position, usedIds);
+      }
+      if (player) {
+        usedIds.add(player.id);
+        return player.id;
+      }
+      return 0;
+    });
+
+    updateTactics(f, mentality);
+    updateStartingLineup(newIds);
+  };
+
+  const handleMentalityChange = (mVal: "defensive" | "balanced" | "attacking") => {
+    setMentality(mVal);
+    updateTactics(formation, mVal);
+  };
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [autoResult, setAutoResult] = useState<AutoLineupResult | null>(null);
+  const [posFilter, setPosFilter] = useState<"ALL" | "GK" | "DEF" | "MID" | "FWD">("ALL");
+  const [benchSort, setBenchSort] = useState<"ca" | "form" | "fitness" | "position">("ca");
 
   const slots = FORMATIONS[formation];
+
+  const headCoach = useMemo(
+    () => staff.find(s => s.role === "headCoach" && s.hired) ?? null,
+    [staff],
+  );
+
+  const handleAutoLineup = () => {
+    const result = autoBuildLineup(
+      playerSquad,
+      slots.map(s => ({ position: s.position })),
+      headCoach,
+    );
+    if (result.ids.length === slots.length && result.ids.every(id => id !== 0)) {
+      updateStartingLineup(result.ids);
+    }
+    setAutoResult(result);
+  };
 
   // Auto-assign best players to slots and sync with context
   const lineup = useMemo(() => {
@@ -181,12 +236,42 @@ export default function TacticsView() {
       <div style={styles.header}>
         <h1 style={styles.title}>📋 Táticas</h1>
         <div style={styles.headerRight}>
+          {sessionStorage.getItem("footsim_return_to_prematch") === "1" && (
+            <BackToPreMatchButton />
+          )}
+          <button
+            onClick={handleAutoLineup}
+            title={headCoach
+              ? `Pedir ao treinador ${headCoach.name} (qualidade ${headCoach.quality}/100)`
+              : "Sem treinador contratado — montagem amadora"}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+              fontFamily: "var(--font-sans)",
+              border: `1.5px solid ${headCoach ? "#10b981" : "#ef4444"}`,
+              background: headCoach
+                ? "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.06))"
+                : "linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05))",
+              color: headCoach ? "#10b981" : "#ef4444",
+              marginRight: 12,
+              boxShadow: headCoach ? "0 0 12px rgba(16,185,129,0.25)" : "none",
+            }}
+          >
+            🧠 {headCoach ? `Pedir ao Treinador (${headCoach.quality}/100)` : "Sem treinador"}
+          </button>
           <span style={styles.avgLabel}>Força do XI: </span>
           <span style={{ fontSize: "20px", fontWeight: 900, color: getAttrColor(avgCA) }}>
             {Math.round(avgCA)}
           </span>
         </div>
       </div>
+
+      {autoResult && (
+        <AutoLineupReport result={autoResult} onClose={() => setAutoResult(null)} />
+      )}
 
       <div style={styles.content}>
         {/* Left: Pitch */}
@@ -196,7 +281,7 @@ export default function TacticsView() {
             {(Object.keys(FORMATIONS) as Formation[]).map(f => (
               <button
                 key={f}
-                onClick={() => setFormation(f)}
+                onClick={() => handleFormationChange(f)}
                 style={{
                   ...styles.formBtn,
                   ...(formation === f ? styles.formBtnActive : {}),
@@ -239,8 +324,18 @@ export default function TacticsView() {
                   background: item.player
                     ? `linear-gradient(135deg, ${getAttrColor(item.player.currentAbility)}, ${getAttrColor(item.player.currentAbility)}88)`
                     : "rgba(100,100,100,0.5)",
+                  overflow: "hidden",
+                  position: "relative",
                 }}>
-                  <span style={styles.dotNumber}>
+                  {item.player && (
+                    <img
+                      src={`/assets/players/faces/${item.player.id}.png`}
+                      alt={item.player.name}
+                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%", position: "absolute", inset: 0 }}
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  )}
+                  <span style={{ ...styles.dotNumber, position: "relative", zIndex: 2 }}>
                     {item.player?.shirtNumber || "?"}
                   </span>
                 </div>
@@ -260,7 +355,7 @@ export default function TacticsView() {
             {MENTALITIES.map(m => (
               <button
                 key={m.value}
-                onClick={() => setMentality(m.value)}
+                onClick={() => handleMentalityChange(m.value)}
                 style={{
                   ...styles.mentalBtn,
                   ...(mentality === m.value ? { background: m.color, color: "#fff", borderColor: m.color } : {}),
@@ -315,41 +410,248 @@ export default function TacticsView() {
           {/* Bench */}
           <div className="card" style={styles.benchCard}>
             <h3 style={styles.sectionTitle}>🪑 Reservas ({bench.length})</h3>
-            <div style={styles.benchList}>
-              {bench.map(p => (
-                <div 
-                  key={p.id} 
-                  onClick={() => handleBenchClick(p)}
-                  style={{
-                    ...styles.benchPlayer,
-                    opacity: (p.injuryDays ?? 0) > 0 ? 0.6 : 1,
-                    cursor: selectedSlot !== null ? "pointer" : "default",
-                    background: selectedSlot !== null ? "var(--color-bg-hover)" : "transparent"
-                  }}
-                >
-                  <span style={styles.benchNum}>{p.shirtNumber}</span>
-                  <span style={{ flex: 1, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                    {(p.injuryDays ?? 0) > 0 && <span title={`Lesionado (${p.injuryDays} dias)`}>🏥</span>}
-                    {p.name}
-                  </span>
-                  <span style={{
-                    ...styles.benchBadge,
-                    background: p.positionCategory === "GK" ? "#f59e0b" :
-                      p.positionCategory === "DEF" ? "#3b82f6" :
-                      p.positionCategory === "MID" ? "#10b981" : "#ef4444",
-                  }}>{p.position}</span>
-                  <span style={{
-                    fontWeight: 700,
-                    fontSize: "12px",
-                    color: getAttrColor(p.currentAbility),
-                    width: "28px",
-                    textAlign: "right",
-                  }}>{p.currentAbility}</span>
-                </div>
+
+            {/* Filter chips */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}>
+              {([
+                ["ALL", "Todos", "var(--color-text-secondary)"],
+                ["GK", "GK", "#f59e0b"],
+                ["DEF", "DEF", "#3b82f6"],
+                ["MID", "MID", "#10b981"],
+                ["FWD", "FWD", "#ef4444"],
+              ] as const).map(([k, label, color]) => (
+                <button key={k} onClick={() => setPosFilter(k)} style={{
+                  padding: "3px 10px", borderRadius: 12, fontSize: 10, fontWeight: 800,
+                  cursor: "pointer", fontFamily: "var(--font-sans)",
+                  border: `1px solid ${posFilter === k ? color : "var(--color-border)"}`,
+                  background: posFilter === k ? `${color}22` : "transparent",
+                  color: posFilter === k ? color : "var(--color-text-muted)",
+                  letterSpacing: 0.5,
+                }}>{label}</button>
               ))}
+              <select
+                value={benchSort}
+                onChange={e => setBenchSort(e.target.value as "ca" | "form" | "fitness" | "position")}
+                style={{
+                  marginLeft: "auto", fontSize: 10, padding: "2px 6px", borderRadius: 4,
+                  background: "var(--color-bg-card)", color: "var(--color-text-secondary)",
+                  border: "1px solid var(--color-border)", fontFamily: "var(--font-sans)",
+                  cursor: "pointer",
+                }}
+              >
+                <option value="ca">↓ CA</option>
+                <option value="form">↓ Forma</option>
+                <option value="fitness">↓ Fitness</option>
+                <option value="position">↑ Posição</option>
+              </select>
+            </div>
+
+            {(() => {
+              const slotPos = selectedSlot != null ? slots[selectedSlot].position : null;
+              const slotCat = slotPos
+                ? (slotPos === "GK" ? "GK"
+                  : ["CB", "LB", "RB", "LWB", "RWB"].includes(slotPos) ? "DEF"
+                  : ["CDM", "CM", "CAM", "LM", "RM"].includes(slotPos) ? "MID" : "FWD")
+                : null;
+
+              let filtered = posFilter === "ALL" ? bench : bench.filter(p => p.positionCategory === posFilter);
+              const sorters: Record<typeof benchSort, (a: Player, b: Player) => number> = {
+                ca: (a, b) => b.currentAbility - a.currentAbility,
+                form: (a, b) => (b.form ?? 50) - (a.form ?? 50),
+                fitness: (a, b) => (b.fitness ?? 100) - (a.fitness ?? 100),
+                position: (a, b) => a.position.localeCompare(b.position) || b.currentAbility - a.currentAbility,
+              };
+              filtered = [...filtered].sort(sorters[benchSort]);
+
+              return (
+                <div style={styles.benchList}>
+                  {filtered.map(p => {
+                    const eligible = slotCat ? p.positionCategory === slotCat : false;
+                    const exactPos = slotPos ? p.position === slotPos : false;
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => handleBenchClick(p)}
+                        title={selectedSlot !== null
+                          ? exactPos ? "Posição exata — clique pra trocar"
+                            : eligible ? "Mesma categoria — clique pra trocar"
+                            : "Fora de posição"
+                          : "Selecione um slot do campo primeiro"}
+                        style={{
+                          ...styles.benchPlayer,
+                          opacity: (p.injuryDays ?? 0) > 0 ? 0.55
+                            : selectedSlot !== null && !eligible ? 0.5
+                            : 1,
+                          cursor: selectedSlot !== null ? "pointer" : "default",
+                          background: exactPos ? "rgba(16,185,129,0.18)"
+                            : eligible ? "rgba(59,130,246,0.10)"
+                            : selectedSlot !== null ? "var(--color-bg-hover)"
+                            : "transparent",
+                          borderLeft: exactPos ? "3px solid #10b981"
+                            : eligible ? "3px solid #3b82f6"
+                            : "3px solid transparent",
+                        }}
+                      >
+                        <span style={styles.benchNum}>{p.shirtNumber}</span>
+                        <span style={{ flex: 1, fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
+                          {(p.injuryDays ?? 0) > 0 && <span title={`Lesionado (${p.injuryDays} dias)`}>🏥</span>}
+                          {(p.suspensionDays ?? 0) > 0 && <span title={`Suspenso (${p.suspensionDays} dias)`}>🟥</span>}
+                          {(p.fitness ?? 100) < 65 && <span title={`Fitness ${p.fitness}%`}>💤</span>}
+                          {p.name}
+                        </span>
+                        <span style={{
+                          ...styles.benchBadge,
+                          background: p.positionCategory === "GK" ? "#f59e0b" :
+                            p.positionCategory === "DEF" ? "#3b82f6" :
+                            p.positionCategory === "MID" ? "#10b981" : "#ef4444",
+                        }}>{p.position}</span>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: "12px",
+                          color: getAttrColor(p.currentAbility),
+                          width: "28px",
+                          textAlign: "right",
+                        }}>{p.currentAbility}</span>
+                      </div>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <div style={{ padding: 20, textAlign: "center", color: "var(--color-text-muted)", fontSize: 11 }}>
+                      Nenhum jogador nesse filtro
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BackToPreMatchButton() {
+  const navigate = useNavigate();
+  return (
+    <button
+      onClick={() => navigate("/game")}
+      style={{
+        padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 800, cursor: "pointer",
+        fontFamily: "var(--font-sans)", marginRight: 12,
+        border: "1.5px solid #f59e0b",
+        background: "linear-gradient(135deg, rgba(245,158,11,0.2), rgba(245,158,11,0.06))",
+        color: "#f59e0b",
+        boxShadow: "0 0 12px rgba(245,158,11,0.25)",
+      }}
+    >
+      ← Voltar ao Pré-Jogo
+    </button>
+  );
+}
+
+function AutoLineupReport({ result, onClose }: { result: AutoLineupResult; onClose: () => void }) {
+  const qColor = result.coachQuality >= 88 ? "#10b981"
+    : result.coachQuality >= 75 ? "#3b82f6"
+    : result.coachQuality >= 60 ? "#f59e0b"
+    : result.coachQuality >= 40 ? "#ef4444" : "#7f1d1d";
+
+  const labelText: Record<AutoLineupResult["qualityLabel"], string> = {
+    ideal: "ESCALAÇÃO IDEAL",
+    boa: "ESCALAÇÃO SÓLIDA",
+    "média": "ESCALAÇÃO RAZOÁVEL",
+    fraca: "ESCALAÇÃO QUESTIONÁVEL",
+    amador: "MONTAGEM AMADORA",
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9000,
+      background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "var(--color-bg-secondary)",
+        border: `2px solid ${qColor}`,
+        borderRadius: 14,
+        padding: 24,
+        width: 520, maxWidth: "92vw",
+        boxShadow: `0 20px 50px rgba(0,0,0,0.6), 0 0 30px ${qColor}33`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+          <span style={{ fontSize: 36 }}>🧠</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1.5, color: qColor }}>
+              {labelText[result.qualityLabel]}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "var(--color-text-primary)" }}>
+              {result.coachName ?? "Você mesmo (sem treinador)"}
+            </div>
+          </div>
+          <div style={{
+            fontSize: 26, fontWeight: 900, color: qColor,
+            fontFamily: "var(--font-mono)",
+            padding: "4px 12px", borderRadius: 6,
+            background: `${qColor}11`,
+          }}>
+            {result.coachQuality}<span style={{ fontSize: 11, opacity: 0.5 }}>/100</span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, margin: "14px 0", padding: "10px 14px",
+          background: "rgba(255,255,255,0.03)", borderRadius: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Força média</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: getAttrColor(result.effectiveAvgCA) }}>
+              {Math.round(result.effectiveAvgCA)}
+            </div>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>Avisos</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: result.warnings.length === 0 ? "#10b981" : "#f59e0b" }}>
+              {result.warnings.length === 0 ? "✓ 0" : result.warnings.length}
             </div>
           </div>
         </div>
+
+        {result.warnings.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b", marginBottom: 6, letterSpacing: 0.5 }}>
+              ⚠️ PROBLEMAS DETECTADOS
+            </div>
+            {result.warnings.map((w, i) => (
+              <div key={i} style={{
+                fontSize: 12, padding: "6px 10px", marginBottom: 4,
+                background: "rgba(245,158,11,0.08)",
+                borderLeft: "2px solid #f59e0b", borderRadius: 4,
+                color: "var(--color-text-secondary)",
+              }}>{w}</div>
+            ))}
+          </div>
+        )}
+
+        {result.warnings.length === 0 && result.coachQuality >= 75 && (
+          <div style={{
+            padding: "10px 14px", marginBottom: 14, borderRadius: 8,
+            background: "rgba(16,185,129,0.08)", color: "#10b981",
+            fontSize: 12, fontWeight: 600,
+          }}>
+            ✓ Sem erros aparentes. Time pronto para entrar em campo.
+          </div>
+        )}
+
+        {!result.coachName && (
+          <div style={{
+            padding: "10px 14px", marginBottom: 14, borderRadius: 8,
+            background: "rgba(239,68,68,0.08)", color: "#ef4444",
+            fontSize: 12, fontWeight: 600,
+          }}>
+            💡 Contrate um treinador na aba de Staff para escalações melhores.
+          </div>
+        )}
+
+        <button onClick={onClose} className="btn-primary" style={{ width: "100%", padding: 10 }}>
+          OK, entendi
+        </button>
       </div>
     </div>
   );

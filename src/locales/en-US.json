@@ -19,8 +19,10 @@
   "nav.league": "League",
   "nav.transfers": "Transfers",
   "nav.scouting": "Scouting",
+  "nav.packs": "Packs",
   "nav.finances": "Finances",
   "nav.match": "Last Match",
+  "nav.youth": "Youth Academy",
 
   "game.saveLoad": "Save / Load",
   "game.saveSuccess": "Game saved successfully!",

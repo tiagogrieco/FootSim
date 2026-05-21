@@ -148,12 +148,13 @@ export function calculateMarketValue(player: Player): number {
     value += growthRoom * growthRoom * 500;
   }
 
-  if (age <= 21) value *= 1.4;
+  if (age <= 18) value *= 2.0;
+  else if (age <= 21) value *= 1.6;
   else if (age <= 25) value *= 1.2;
   else if (age <= 28) value *= 1.0;
-  else if (age <= 31) value *= 0.7;
-  else if (age <= 33) value *= 0.4;
-  else value *= 0.2;
+  else if (age <= 30) value *= 0.6;
+  else if (age <= 33) value *= 0.3;
+  else value *= 0.1;
 
   const posMult =
     player.positionCategory === "FWD" ? 1.3 :
@@ -238,7 +239,7 @@ export function generateTransferMarket(
 export function evaluateOffer(
   listing: TransferListing,
   offerAmount: number,
-): "accepted" | "rejected" {
+): "accepted" | "rejected" | "counter" {
   if (listing.sellerClubId === null) return "accepted";
 
   const ratio = offerAmount / listing.askingPrice;
@@ -247,7 +248,68 @@ export function evaluateOffer(
   if (ratio >= 0.85 && listing.negotiable) return "accepted";
   if (ratio >= 0.9 && listing.daysOnMarket > 20) return "accepted";
 
+  // Counter-offer possible if negotiable and offer isn't too low
+  if (listing.negotiable && ratio >= 0.6) return "counter";
+
   return "rejected";
+}
+
+export function generateCounterOffer(
+  listing: TransferListing,
+  originalOffer: number,
+): number {
+  const fair = listing.askingPrice;
+  // Counter is between original offer and asking price
+  const midpoint = (originalOffer + fair) / 2;
+  const counter = midpoint + (Math.random() - 0.3) * fair * 0.1;
+  return Math.round(Math.max(originalOffer * 1.05, counter) / 100_000) * 100_000;
+}
+
+// ── AI Sell Offers for Player's Listed Players ──────────────────
+
+export function generateOffersForListedPlayers(
+  listedPlayers: Player[],
+  allClubs: Club[],
+  playerClubId: number,
+  allSquads: Map<number, Player[]>,
+): TransferOffer[] {
+  const offers: TransferOffer[] = [];
+  if (listedPlayers.length === 0) return offers;
+
+  const aiClubs = allClubs.filter(c => c.id !== playerClubId);
+
+  for (const target of listedPlayers) {
+    // Each listed player has ~40% chance of getting an offer per cycle
+    const interestedClubs = aiClubs
+      .filter(c => {
+        const squad = allSquads.get(c.id) || [];
+        const needs = analyzeSquadNeeds(squad);
+        return needs.some(n => n.category === target.positionCategory) && Math.random() < 0.7;
+      })
+      .slice(0, 3);
+
+    for (const club of interestedClubs) {
+      const fairValue = calculateMarketValue(target);
+      const repFactor = club.reputation > 70 ? 1.15 : club.reputation > 50 ? 1.0 : 0.85;
+      const offerMult = 0.7 + Math.random() * 0.4;
+      const offerAmount = Math.round((fairValue * offerMult * repFactor) / 100_000) * 100_000;
+
+      if (offerAmount < fairValue * 0.4) continue;
+
+      offers.push({
+        id: Date.now() + offers.length + Math.floor(Math.random() * 1000),
+        player: target,
+        fromClubId: club.id,
+        fromClubName: club.shortName || club.name,
+        offerAmount: Math.max(offerAmount, 300_000),
+        status: "pending",
+        reason: `Interesse em ${target.name} (listado para venda)`,
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  return offers;
 }
 
 // ── AI Incoming Offers (Smart) ──────────────────────────────────
@@ -265,8 +327,8 @@ export function generateIncomingOffers(
 
   // Each AI club may try to buy based on their needs
   const interestedClubs = aiClubs
-    .filter(() => Math.random() < 0.15) // ~15% of clubs make an offer each window
-    .slice(0, 3);
+    .filter(() => Math.random() < 0.30) // ~30% of clubs make an offer each window
+    .slice(0, 5);
 
   for (const club of interestedClubs) {
     const aiSquad = allSquads?.get(club.id) || [];
@@ -310,3 +372,4 @@ export function generateIncomingOffers(
 
   return offers;
 }
+

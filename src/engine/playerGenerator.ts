@@ -1,5 +1,9 @@
-import type { Player, Club, Position, PositionCategory, PlayerAttributes } from "../types/game";
+import type { Player, Club, Position, PositionCategory, PlayerAttributes, PreferredFoot, Personality } from "../types/game";
 import { calculateCA, getPositionCategory, createEmptyStats } from "../types/game";
+import { initRPGData } from "./rpgEngine";
+
+const FEET: PreferredFoot[] = ["right", "right", "right", "right", "right", "right", "right", "left", "left", "both"];
+const PERSONALITIES: Personality[] = ["professional", "professional", "determined", "determined", "leader", "lazy", "temperamental"];
 
 const FIRST_NAMES = [
   "Lucas", "Gabriel", "Pedro", "Rafael", "Matheus", "Bruno", "Felipe", "Gustavo",
@@ -77,7 +81,9 @@ export function generateSquadForClub(club: Club): Player[] {
   for (const slot of SQUAD_TEMPLATE) {
     for (let i = 0; i < slot.count; i++) {
       const posCategory = getPositionCategory(slot.position);
-      const quality = rand(Math.max(30, qualityBase - 12), Math.min(90, qualityBase + 8));
+      const minQ = Math.max(30, qualityBase - 12);
+      const maxQ = Math.max(minQ + 5, Math.min(90, qualityBase + 8));
+      const quality = rand(minQ, maxQ);
       const age = rand(18, 34);
       const attrs = generateAttributes(posCategory, quality);
 
@@ -97,6 +103,11 @@ export function generateSquadForClub(club: Club): Player[] {
         marketValue: quality * rand(30000, 80000),
         wage: quality * rand(300, 800),
         seasonStats: createEmptyStats(),
+        preferredFoot: pick(FEET),
+        personality: pick(PERSONALITIES),
+        form: 50,
+        happiness: 50,
+        rpg: initRPGData(calculateCA(attrs, posCategory)),
       };
 
       players.push(player);
@@ -150,6 +161,11 @@ export function generateYouthPlayers(club: Club, count: number): Player[] {
       marketValue: currentAbility * rand(10000, 30000), // Cheaper because they are young
       wage: currentAbility * rand(50, 150), // Youth contract
       seasonStats: createEmptyStats(),
+      preferredFoot: pick(FEET),
+      personality: pick(PERSONALITIES),
+      form: 50,
+      happiness: 50,
+      rpg: initRPGData(currentAbility),
     };
 
     players.push(player);

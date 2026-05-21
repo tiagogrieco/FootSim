@@ -19,8 +19,10 @@
   "nav.league": "Campeonato",
   "nav.transfers": "Transferências",
   "nav.scouting": "Olheiros",
+  "nav.packs": "Pacotes",
   "nav.finances": "Finanças",
   "nav.match": "Último Jogo",
+  "nav.youth": "Categorias de Base",
 
   "game.saveLoad": "Salvar / Carregar",
   "game.saveSuccess": "Jogo salvo com sucesso!",

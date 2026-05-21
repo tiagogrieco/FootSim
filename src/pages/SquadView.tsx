@@ -3,10 +3,17 @@ import { useNavigate } from "react-router-dom";
 import type { Player } from "../types/game";
 import { getAttrColor } from "../types/game";
 import { useGame } from "../context/GameContext";
+import { initRPGData } from "../engine/rpgEngine";
+import PlayerCard from "../components/PlayerCard";
 
-type SortKey = "name" | "age" | "position" | "currentAbility" | "pace" | "shooting" | "passing" | "dribbling" | "defending" | "physical" | "goalkeeping" | "fitness" | "morale";
+type SortKey = "name" | "age" | "position" | "currentAbility" | "pace" | "shooting" | "passing" | "dribbling" | "defending" | "physical" | "goalkeeping" | "fitness" | "morale" | "form" | "happiness";
 type SortDir = "asc" | "desc";
 type FilterPos = "ALL" | "GK" | "DEF" | "MID" | "FWD";
+type ViewMode = "table" | "cards";
+
+const POSITION_ORDER: Record<string, number> = {
+  GK: 1, CB: 2, RB: 3, LB: 4, CDM: 5, CM: 6, CAM: 7, LM: 8, RM: 9, LW: 10, RW: 11, CF: 12, ST: 13,
+};
 
 const POSITION_FILTERS: { label: string; value: FilterPos }[] = [
   { label: "Todos", value: "ALL" },
@@ -56,6 +63,7 @@ export default function SquadView() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [filterPos, setFilterPos] = useState<FilterPos>("ALL");
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
 
   const filtered = useMemo(() => {
     let list = [...players];
@@ -69,7 +77,8 @@ export default function SquadView() {
       if (sortKey === "name") {
         aVal = a.name; bVal = b.name;
       } else if (sortKey === "position") {
-        aVal = a.position; bVal = b.position;
+        aVal = POSITION_ORDER[a.position] ?? 99;
+        bVal = POSITION_ORDER[b.position] ?? 99;
       } else if (sortKey in a.attributes) {
         aVal = a.attributes[sortKey as keyof typeof a.attributes];
         bVal = b.attributes[sortKey as keyof typeof b.attributes];
@@ -105,6 +114,14 @@ export default function SquadView() {
       {/* Top Bar */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
+          <div style={{ width: "48px", height: "48px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img 
+              src={`/assets/clubs/logos/${club.id}.png`} 
+              alt={club.shortName}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          </div>
           <div>
             <h1 style={styles.clubName}>{club.name}</h1>
             <span style={styles.clubMeta}>{club.league} • {club.formation} • Orçamento: {formatCurrency(club.budget)}</span>
@@ -143,9 +160,42 @@ export default function SquadView() {
           ))}
         </div>
         <span style={styles.resultCount}>{filtered.length} jogadores</span>
+        <div style={{ display: "flex", gap: "4px" }}>
+          <button
+            style={{
+              ...styles.filterBtn,
+              ...(viewMode === "cards" ? styles.filterBtnActive : {}),
+            }}
+            onClick={() => setViewMode("cards")}
+          >🃏 Cartas</button>
+          <button
+            style={{
+              ...styles.filterBtn,
+              ...(viewMode === "table" ? styles.filterBtnActive : {}),
+            }}
+            onClick={() => setViewMode("table")}
+          >📊 Tabela</button>
+        </div>
       </div>
 
-      {/* Table */}
+      {/* Content */}
+      {viewMode === "cards" ? (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gap: "16px",
+          padding: "16px",
+        }}>
+          {filtered.map(player => {
+            const rpg = player.rpg || initRPGData(player.currentAbility);
+            return (
+              <div key={player.id} onClick={() => navigate(`/game/player/${player.id}`)} style={{ cursor: "pointer" }}>
+                <PlayerCard player={{ ...player, rpg }} />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
       <div style={styles.tableWrapper}>
         <div className="table-container">
           <table className="data-table">
@@ -161,6 +211,8 @@ export default function SquadView() {
                 ))}
                 <th onClick={() => handleSort("fitness")} style={{ width: 50 }}><Tooltip text="Condição física — Afeta desempenho em campo">FIT{sortIndicator("fitness")}</Tooltip></th>
                 <th onClick={() => handleSort("morale")} style={{ width: 50 }}><Tooltip text="Moral — Influenciado por resultados e treinos">MOR{sortIndicator("morale")}</Tooltip></th>
+                <th onClick={() => handleSort("form")} style={{ width: 60 }}><Tooltip text="Forma — Média das últimas atuações">FOR{sortIndicator("form")}</Tooltip></th>
+                <th onClick={() => handleSort("happiness")} style={{ width: 50 }}><Tooltip text="Satisfação — Tempo de jogo e resultados">SAT{sortIndicator("happiness")}</Tooltip></th>
                 <th style={{ width: 36 }}><Tooltip text="Gols marcados na temporada">⚽</Tooltip></th>
                 <th style={{ width: 36 }}><Tooltip text="Assistências na temporada">🅰️</Tooltip></th>
                 <th style={{ width: 36 }}><Tooltip text="Rating médio — Calculado por posição: GK(clean sheets), DEF(defesa), MID(passes), FWD(gols)">⭐</Tooltip></th>
@@ -187,6 +239,12 @@ export default function SquadView() {
                     {(player.injuryDays ?? 0) > 0 && (
                       <span style={{ marginRight: '6px' }} title={`Lesionado (${player.injuryDays} dias)`}>🏥</span>
                     )}
+                    {(player.strikeDays ?? 0) > 0 && (
+                      <span style={{ marginRight: '6px' }} title={`EM GREVE (${player.strikeDays} dias)`}>✊</span>
+                    )}
+                    {(player.playtimePromiseMatches ?? 0) > 0 && (
+                      <span style={{ marginRight: '6px' }} title="Promessa de tempo de jogo ativa">🤝</span>
+                    )}
                     {player.name}
                   </td>
                   <td>{player.age}</td>
@@ -207,6 +265,15 @@ export default function SquadView() {
                       <div className="attr-bar-fill" style={{ width: `${player.morale}%`, background: getAttrColor(player.morale) }} />
                     </div>
                   </td>
+                  <td style={{ fontSize: "13px", fontWeight: 700 }}>
+                    {player.form >= 75 ? "🔥" : player.form <= 40 ? "❄️" : "➖"} {player.form}
+                  </td>
+                  <td>
+                    <div className="attr-bar" style={{ width: 40 }}>
+                      <div className="attr-bar-fill" style={{ width: `${player.happiness ?? 50}%`, background: (player.happiness ?? 50) < 30 ? "#ef4444" : (player.happiness ?? 50) < 60 ? "#f59e0b" : "#10b981" }} />
+                    </div>
+                    {(player.happiness ?? 50) < 30 && <span title="Insatisfeito — pede transferência">⚠️</span>}
+                  </td>
                   <td style={{ fontWeight: 700, color: (player.seasonStats?.goals || 0) > 0 ? "#10b981" : "var(--color-text-muted)" }}>
                     {player.seasonStats?.goals || 0}
                   </td>
@@ -223,6 +290,7 @@ export default function SquadView() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Player Detail Panel */}
       {selectedPlayer && (

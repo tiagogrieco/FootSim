@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
-import type { Player } from "../types/game";
+import type { Player, Club } from "../types/game";
+import type { Fixture } from "../engine/leagueEngine";
 
 interface LeaderEntry {
   player: Player;
@@ -39,9 +40,9 @@ function buildLeaders(
 }
 
 export default function LeagueView() {
-  const { standings, fixtures, allClubs, allSquads, playerClub, playerSquad, currentRound } = useGame();
+  const { standings, fixtures, allClubs, allSquads, playerClub, playerSquad, currentRound, cupFixtures } = useGame();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"standings" | "fixtures" | "results" | "stats">("standings");
+  const [activeTab, setActiveTab] = useState<"standings" | "fixtures" | "results" | "stats" | "cup">("standings");
   const [statCategory, setStatCategory] = useState<"goals" | "assists" | "rating" | "motm">("goals");
   const [selectedLeague, setSelectedLeague] = useState<string>(playerClub.league || "Série A");
 
@@ -58,23 +59,24 @@ export default function LeagueView() {
     [leagueFixtures],
   );
 
+
   const topScorers = useMemo(() =>
-    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as any, selectedLeague, s => s.goals),
+    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as Club[], selectedLeague, s => s.goals),
     [allSquads, playerSquad, playerClub, allClubs, selectedLeague],
   );
 
   const topAssisters = useMemo(() =>
-    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as any, selectedLeague, s => s.assists),
+    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as Club[], selectedLeague, s => s.assists),
     [allSquads, playerSquad, playerClub, allClubs, selectedLeague],
   );
 
   const topRated = useMemo(() =>
-    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as any, selectedLeague, s => s.appearances > 0 ? s.avgRating : 0, 0.1),
+    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as Club[], selectedLeague, s => s.appearances > 0 ? s.avgRating : 0, 0.1),
     [allSquads, playerSquad, playerClub, allClubs, selectedLeague],
   );
 
   const topMotm = useMemo(() =>
-    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as any, selectedLeague, s => s.motm),
+    buildLeaders(allSquads, playerSquad, playerClub.id, allClubs as Club[], selectedLeague, s => s.motm),
     [allSquads, playerSquad, playerClub, allClubs, selectedLeague],
   );
 
@@ -129,6 +131,7 @@ export default function LeagueView() {
           { key: "stats", label: "Estatísticas", icon: "🏅" },
           { key: "results", label: "Resultados", icon: "⚽" },
           { key: "fixtures", label: "Próximos Jogos", icon: "📅" },
+        { key: "cup", label: "Copa do Brasil", icon: "🏆" },
         ] as const).map(tab => (
           <button
             key={tab.key}
@@ -185,10 +188,28 @@ export default function LeagueView() {
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontWeight: 700, fontSize: "12px", color: "var(--color-text-muted)", width: "32px" }}>
-                          {s.clubShortName}
-                        </span>
-                        <span>{s.clubName}</span>
+                        <div style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <img 
+                            src={`/assets/clubs/logos/${s.clubId}.png`} 
+                            alt={s.clubShortName}
+                            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              if (e.currentTarget.nextElementSibling) {
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                              }
+                            }}
+                          />
+                          <span style={{ fontWeight: 700, fontSize: "12px", color: "var(--color-text-muted)", display: "none" }}>
+                            {s.clubShortName}
+                          </span>
+                        </div>
+                        <span
+                          style={{ cursor: "pointer" }}
+                          onClick={() => navigate(`/game/club/${s.clubId}`)}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "var(--color-accent-primary)")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "var(--color-text-primary)")}
+                        >{s.clubName}</span>
                         {isPlayer && <span style={{ fontSize: "10px" }}>⭐</span>}
                       </div>
                     </td>
@@ -309,10 +330,23 @@ export default function LeagueView() {
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontWeight: 700, fontSize: "11px", color: "var(--color-text-muted)" }}>
-                              {entry.clubShort}
-                            </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <div style={{ width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                              <img 
+                                src={`/assets/clubs/logos/${entry.clubId}.png`} 
+                                alt={entry.clubShort}
+                                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.nextElementSibling) {
+                                    (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                                  }
+                                }}
+                              />
+                              <span style={{ fontWeight: 700, fontSize: "11px", color: "var(--color-text-muted)", display: "none" }}>
+                                {entry.clubShort}
+                              </span>
+                            </div>
                             <span style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
                               {entry.clubName}
                             </span>
@@ -376,13 +410,68 @@ export default function LeagueView() {
                     }}>
                       {leader.player.name}
                     </span>
-                    <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                      {leader.clubShort}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                      <div style={{ width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <img 
+                          src={`/assets/clubs/logos/${leader.clubId}.png`} 
+                          alt={leader.clubShort}
+                          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextElementSibling) {
+                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'block';
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: "10px", color: "var(--color-text-muted)", display: "none" }}>
+                          {leader.clubShort}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                        {leader.clubName}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "cup" && (
+        <div style={styles.fixtureGrid}>
+          {cupFixtures.length === 0 ? (
+            <div className="card" style={{ padding: "40px", textAlign: "center" }}>
+              <p style={{ color: "var(--color-text-muted)" }}>🏆 Copa do Brasil começa em Abril</p>
+            </div>
+          ) : (
+            cupFixtures.map((f: Fixture, i: number) => {
+              const home = allClubs.find(c => c.id === f.homeClubId);
+              const away = allClubs.find(c => c.id === f.awayClubId);
+              if (!home || !away) return null;
+              const isPlayerGame = f.homeClubId === playerClub.id || f.awayClubId === playerClub.id;
+              return (
+                <div key={i} className="card" style={{ ...styles.fixtureCard, borderLeft: isPlayerGame ? "3px solid #f59e0b" : undefined }}>
+                  <span style={styles.roundLabel}>R{f.round}</span>
+                  <div style={styles.fixtureTeams}>
+                    <span style={styles.fixTeam}>{home.shortName}</span>
+                    <div style={styles.fixtureScore}>
+                      {f.played && f.result ? (
+                        <>
+                          <span style={styles.scoreNum}>{f.result.homeGoals}</span>
+                          <span style={{ color: "var(--color-text-muted)", fontSize: "11px" }}>×</span>
+                          <span style={styles.scoreNum}>{f.result.awayGoals}</span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{f.date?.split("-")[2]}/{f.date?.split("-")[1]}</span>
+                      )}
+                    </div>
+                    <span style={{ ...styles.fixTeam, textAlign: "right" }}>{away.shortName}</span>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -407,24 +496,27 @@ export default function LeagueView() {
                 >
                   <span style={styles.roundLabel}>R{f.round}</span>
                   <div style={styles.fixtureTeams}>
-                    <span style={{
+                    <div style={{
                       ...styles.fixTeam,
+                      display: "flex", alignItems: "center", justifyContent: "flex-end",
                       fontWeight: f.result && f.result.homeGoals > f.result.awayGoals ? 800 : 400,
                     }}>
                       {getClubFull(f.homeClubId)}
-                    </span>
+                      <img src={`/assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    </div>
                     <div style={styles.fixtureScore}>
                       <span style={styles.scoreNum}>{f.result?.homeGoals}</span>
                       <span style={{ color: "var(--color-text-muted)" }}>×</span>
                       <span style={styles.scoreNum}>{f.result?.awayGoals}</span>
                     </div>
-                    <span style={{
+                    <div style={{
                       ...styles.fixTeam,
-                      textAlign: "right",
+                      display: "flex", alignItems: "center", justifyContent: "flex-start",
                       fontWeight: f.result && f.result.awayGoals > f.result.homeGoals ? 800 : 400,
                     }}>
+                      <img src={`/assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       {getClubFull(f.awayClubId)}
-                    </span>
+                    </div>
                   </div>
                 </div>
               );
@@ -453,9 +545,15 @@ export default function LeagueView() {
                 >
                   <span style={styles.roundLabel}>R{f.round}</span>
                   <div style={styles.fixtureTeams}>
-                    <span style={styles.fixTeam}>{getClubFull(f.homeClubId)}</span>
+                    <div style={{ ...styles.fixTeam, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                      {getClubFull(f.homeClubId)}
+                      <img src={`/assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                    </div>
                     <span style={{ color: "var(--color-text-muted)", fontSize: "13px" }}>vs</span>
-                    <span style={{ ...styles.fixTeam, textAlign: "right" }}>{getClubFull(f.awayClubId)}</span>
+                    <div style={{ ...styles.fixTeam, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+                      <img src={`/assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      {getClubFull(f.awayClubId)}
+                    </div>
                   </div>
                 </div>
               );

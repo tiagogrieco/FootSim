@@ -1,3 +1,5 @@
+import type { RPGData } from "./rpg";
+
 export interface PlayerAttributes {
   pace: number;
   shooting: number;
@@ -9,6 +11,10 @@ export interface PlayerAttributes {
 }
 
 export type Position = "GK" | "CB" | "LB" | "RB" | "CDM" | "CM" | "CAM" | "LM" | "RM" | "LW" | "RW" | "ST" | "CF";
+
+export type PreferredFoot = "left" | "right" | "both";
+
+export type Personality = "determined" | "professional" | "lazy" | "temperamental" | "leader";
 
 export type PositionCategory = "GK" | "DEF" | "MID" | "FWD";
 
@@ -68,6 +74,16 @@ export interface Player {
   seasonStats: PlayerSeasonStats;
   careerHistory?: SeasonHistoryEntry[];
   injuryDays?: number; // E3: Days remaining until the player recovers
+  suspensionDays?: number; // E3: Match suspension (usually measured in games, but we'll use days/matches)
+  preferredFoot: PreferredFoot;
+  personality: Personality;
+  form: number; // 0-100, rolling average based on recent match ratings
+  happiness: number; // 0-100, satisfaction with playing time
+  rpg?: RPGData;     // RPG card data (rarity, level, xp, traits)
+  trainingFocus?: "Físico" | "Técnico" | "Tático" | "Geral";
+  playtimePromiseMatches?: number;
+  playtimePromiseStarts?: number;
+  strikeDays?: number;
 }
 
 export interface Sponsor {
@@ -85,6 +101,7 @@ export interface Club {
   reputation: number;
   budget: number;
   wageBudget: number;
+  debt?: number;
   infrastructure: number;
   colors: {
     primary: string;
@@ -95,6 +112,79 @@ export interface Club {
   sponsor?: Sponsor;
   startingLineup?: number[];
   history?: ClubSeasonHistoryEntry[];
+  logoUrl?: string;
+  youthAcademy?: Player[];
+  scoutReports?: Record<number, string>; // Cache for AI scout reports
+  difficulty?: "easy" | "medium" | "hard";
+}
+
+export interface BoardObjective {
+  type: "points_run";
+  targetPoints: number;
+  gamesLimit: number;
+  gamesPlayed: number;
+  pointsEarned: number;
+  description: string;
+}
+
+export interface InboxMessage {
+  id: string;
+  sender: string;       // e.g. "Presidente", "Capitão", "Olheiro"
+  subject: string;
+  body: string;
+  date: string;
+  type: "board" | "player" | "scout" | "system";
+  read: boolean;
+  actionRequired?: boolean;
+  actionCompleted?: boolean;
+  actionOptions?: {
+    id: string;
+    text: string;
+    replyText: string;
+    effects: {
+      budgetChange?: number;
+      boardConfidenceChange?: number;
+      playerMoraleChange?: { playerId: number; change: number };
+      playerHappinessChange?: { playerId: number; change: number };
+      activeObjective?: BoardObjective;
+      playtimePromise?: { matches: number; playerId: number };
+      wageIncrease?: { newWage: number; playerId: number };
+      staffSatisfactionChange?: { role: string; change: number };
+      staffQualityChange?: { role: string; change: number };
+      strikeDays?: { days: number; playerId: number };
+    };
+  }[];
+}
+
+
+export interface GameEventOption {
+  text: string;
+  effectText: string;
+  effects: {
+    budgetChange?: number;
+    moraleChange?: number; // global morale change
+    boardConfidenceChange?: number; // board confidence change
+    playerMoralChange?: {
+      target: "random" | "star" | "reserve";
+      value: number;
+    };
+    xpBoost?: {
+      target: "all" | "random";
+      value: number;
+    };
+    injuryPlayer?: {
+      probability: number;
+      maxDuration: number;
+    };
+  };
+}
+
+export interface GameEvent {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  options: GameEventOption[];
 }
 
 export interface GameState {

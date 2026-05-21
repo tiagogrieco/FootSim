@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { getAttrColor } from "../types/game";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 const ATTRS = [
   { key: "pace" as const, label: "Velocidade", icon: "⚡" },
@@ -139,7 +139,8 @@ function RadarChart({ values, labels }: { values: number[]; labels: string[] }) 
 export default function PlayerProfileView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { playerSquad, allSquads, allClubs, playerClub } = useGame();
+  const { playerSquad, allSquads, allClubs, playerClub, generatePlayerScoutReport, budget } = useGame();
+  const [scouting, setScouting] = useState(false);
 
   // Find player across all squads
   const playerId = Number(id);
@@ -171,6 +172,25 @@ export default function PlayerProfileView() {
   const radarValues = ATTRS.map(a => player!.attributes[a.key]);
   const radarLabels = ATTRS.map(a => a.label);
   const growth = player.potentialAbility - player.currentAbility;
+
+  const scoutReport = playerClub.scoutReports?.[player.id];
+
+  const handleRequestReport = async () => {
+    if (!player) return;
+    if (budget < 5000) {
+      alert("Orçamento insuficiente! Custo para enviar olheiro: R$ 5.000");
+      return;
+    }
+    setScouting(true);
+    try {
+      await generatePlayerScoutReport(player.id);
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao gerar relatório do olheiro. Tente novamente.");
+    } finally {
+      setScouting(false);
+    }
+  };
   const isYoungTalent = player.age <= 23 && growth >= 8;
   const isPrime = player.age >= 26 && player.age <= 30;
   const isVeteran = player.age >= 32;
@@ -247,7 +267,7 @@ export default function PlayerProfileView() {
 
           {/* Contract info */}
           <div style={styles.card}>
-            <h3 style={styles.sectionTitle}>📋 Contrato</h3>
+            <h3 style={styles.sectionTitle}>📋 Contrato & Vestiário</h3>
             <div style={styles.contractGrid}>
               <div style={styles.contractItem}>
                 <span style={styles.contractLabel}>Valor de Mercado</span>
@@ -273,6 +293,26 @@ export default function PlayerProfileView() {
                   {player.morale}%
                 </span>
               </div>
+              <div style={styles.contractItem}>
+                <span style={styles.contractLabel}>Satisfação</span>
+                <span style={{ color: (player.happiness ?? 50) < 30 ? "#ef4444" : (player.happiness ?? 50) < 60 ? "#f59e0b" : "#10b981", fontWeight: 700, fontSize: "15px" }}>
+                  {player.happiness ?? 50}%
+                </span>
+              </div>
+              <div style={styles.contractItem}>
+                <span style={styles.contractLabel}>Situação</span>
+                <span style={{ color: (player.strikeDays ?? 0) > 0 ? "#ef4444" : "#10b981", fontWeight: 700, fontSize: "14px" }}>
+                  {(player.strikeDays ?? 0) > 0 ? `✊ Greve (${player.strikeDays}d)` : "✅ Disponível"}
+                </span>
+              </div>
+              {((player.playtimePromiseMatches ?? 0) > 0) && (
+                <div style={{ ...styles.contractItem, gridColumn: "span 2" }}>
+                  <span style={styles.contractLabel}>🤝 Promessa de Tempo de Jogo</span>
+                  <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginTop: "2px" }}>
+                    Deve ser titular em mais <strong>{player.playtimePromiseMatches}</strong> partidas (titular em {player.playtimePromiseStarts ?? 0} até agora).
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -441,6 +481,50 @@ export default function PlayerProfileView() {
               })}
             </div>
           </div>
+
+          {/* Scout Report Card */}
+          <div style={styles.card}>
+            <h3 style={styles.sectionTitle}>🔍 Relatório do Observador</h3>
+            {scoutReport ? (
+              <div style={{
+                fontSize: "12px",
+                lineHeight: "1.6",
+                color: "rgba(255, 255, 255, 0.85)",
+                whiteSpace: "pre-wrap",
+                background: "var(--color-bg-primary)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                padding: "12px 14px",
+                maxHeight: "300px",
+                overflowY: "auto"
+              }}>
+                {scoutReport}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "12px 0" }}>
+                <p style={{ fontSize: "12px", color: "var(--color-text-muted)", textAlign: "center", lineHeight: "1.5" }}>
+                  Você ainda não tem um relatório detalhado deste jogador de nosso departamento de observação.
+                </p>
+                <button
+                  onClick={handleRequestReport}
+                  disabled={scouting}
+                  className="btn-primary"
+                  style={{ width: "100%", justifyContent: "center", gap: "8px" }}
+                >
+                  {scouting ? (
+                    <>
+                      🌀 Analisando Jogador...
+                    </>
+                  ) : (
+                    <>
+                      🔍 Solicitar Relatório (R$ 5.000)
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </div>

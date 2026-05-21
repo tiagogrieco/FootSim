@@ -52,7 +52,7 @@ export function processSeasonEnd(
     const position = clubStanding ? clubLeagueStandings.indexOf(clubStanding) + 1 : clubLeagueStandings.length;
     const isChampion = position === 1;
 
-    let history = c.history ? [...c.history] : [];
+    const history = c.history ? [...c.history] : [];
     if (season !== undefined && clubStanding) {
       history.push({
         season,
@@ -106,22 +106,23 @@ export function processSeasonEnd(
     }
   }
 
-  let seasonSummary = "";
-  if (isChampion && myLeague === "Série A") {
-    seasonSummary = `🏆 CAMPEÃO! ${playerClub.name} conquista o título da Série A!`;
-  } else if (isChampion && myLeague === "Série B") {
-    seasonSummary = `🏆 CAMPEÃO DA SÉRIE B! ${playerClub.name} sobe para a divisão de elite!`;
-  } else if (promoted) {
-    seasonSummary = `📈 PROMOVIDO! ${playerClub.name} garantiu o acesso para a Série A!`;
-  } else if (relegated) {
-    seasonSummary = `📉 REBAIXADO. Temporada difícil, ${playerClub.name} jogará a Série B no próximo ano.`;
-  } else if (position <= 3) {
-    seasonSummary = `🥇 Excelente temporada! ${playerClub.name} termina em ${position}º lugar na ${myLeague}.`;
-  } else if (position <= 6) {
-    seasonSummary = `✅ Boa temporada. ${playerClub.name} termina em ${position}º lugar na ${myLeague}.`;
-  } else {
-    seasonSummary = `📊 ${playerClub.name} termina a temporada em ${position}º lugar na ${myLeague}.`;
-  }
+  const seasonSummary = (() => {
+    if (isChampion && myLeague === "Série A") {
+      return `🏆 CAMPEÃO! ${playerClub.name} conquista o título da Série A!`;
+    } else if (isChampion && myLeague === "Série B") {
+      return `🏆 CAMPEÃO DA SÉRIE B! ${playerClub.name} sobe para a divisão de elite!`;
+    } else if (promoted) {
+      return `📈 PROMOVIDO! ${playerClub.name} garantiu o acesso para a Série A!`;
+    } else if (relegated) {
+      return `📉 REBAIXADO. Temporada difícil, ${playerClub.name} jogará a Série B no próximo ano.`;
+    } else if (position <= 3) {
+      return `🥇 Excelente temporada! ${playerClub.name} termina em ${position}º lugar na ${myLeague}.`;
+    } else if (position <= 6) {
+      return `✅ Boa temporada. ${playerClub.name} termina em ${position}º lugar na ${myLeague}.`;
+    } else {
+      return `📊 ${playerClub.name} termina a temporada em ${position}º lugar na ${myLeague}.`;
+    }
+  })();
 
   return {
     finalPosition: position,

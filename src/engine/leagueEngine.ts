@@ -17,19 +17,22 @@ export interface LeagueStanding {
 }
 
 export interface Fixture {
+  id?: number;
   round: number;
   homeClubId: number;
   awayClubId: number;
-  league: string;
+  league?: string;
   played: boolean;
-  result?: { homeGoals: number; awayGoals: number };
+  result?: { homeGoals: number; awayGoals: number; penalties?: { winner: number } };
+  date?: string;
+  isCup?: boolean;
 }
 
 /**
  * Generate round-robin fixtures for a league.
  * Each team plays every other team twice (home and away).
  */
-export function generateFixtures(clubs: Club[]): Fixture[] {
+export function generateFixtures(clubs: Club[], seasonStartDate: string = "2026-03-01"): Fixture[] {
   const fixtures: Fixture[] = [];
   const n = clubs.length;
   const ids = clubs.map(c => c.id);
@@ -63,25 +66,31 @@ export function generateFixtures(clubs: Club[]): Fixture[] {
   }
 
   // Reorganize into proper rounds
-  return assignRounds(fixtures, n);
+  return assignRounds(fixtures, n, seasonStartDate);
 }
 
-function assignRounds(fixtures: Fixture[], teamCount: number): Fixture[] {
+function assignRounds(fixtures: Fixture[], teamCount: number, seasonStartDate: string): Fixture[] {
   const gamesPerRound = Math.floor(teamCount / 2);
   const totalRounds = (teamCount - 1) * 2;
   const sorted: Fixture[] = [];
+  
+  const baseDate = new Date(seasonStartDate);
 
   const unplayed = [...fixtures];
   for (let r = 1; r <= totalRounds; r++) {
     const usedTeams = new Set<number>();
     const roundGames: Fixture[] = [];
 
+    const roundDate = new Date(baseDate);
+    roundDate.setDate(roundDate.getDate() + (r - 1) * 7);
+    const dateStr = roundDate.toISOString().split("T")[0];
+
     for (let i = unplayed.length - 1; i >= 0; i--) {
       const f = unplayed[i];
       if (!usedTeams.has(f.homeClubId) && !usedTeams.has(f.awayClubId)) {
         usedTeams.add(f.homeClubId);
         usedTeams.add(f.awayClubId);
-        roundGames.push({ ...f, round: r });
+        roundGames.push({ ...f, round: r, date: dateStr });
         unplayed.splice(i, 1);
         if (roundGames.length >= gamesPerRound) break;
       }
@@ -92,7 +101,11 @@ function assignRounds(fixtures: Fixture[], teamCount: number): Fixture[] {
   // Add any remaining fixtures
   if (unplayed.length > 0) {
     const lastRound = sorted.length > 0 ? sorted[sorted.length - 1].round + 1 : 1;
-    sorted.push(...unplayed.map((f, i) => ({ ...f, round: lastRound + i })));
+    sorted.push(...unplayed.map((f, i) => {
+      const rDate = new Date(baseDate);
+      rDate.setDate(rDate.getDate() + ((lastRound + i) - 1) * 7);
+      return { ...f, round: lastRound + i, date: rDate.toISOString().split("T")[0] };
+    }));
   }
 
   return sorted;

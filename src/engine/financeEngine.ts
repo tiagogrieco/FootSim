@@ -5,7 +5,7 @@ export interface FinancialRecord {
   month: number;
   season: number;
   type: "income" | "expense";
-  category: "wages" | "transfer_in" | "transfer_out" | "prize" | "ticket" | "sponsor";
+  category: "wages" | "transfer_in" | "transfer_out" | "prize" | "ticket" | "sponsor" | "facility" | "staff" | "loan";
   description: string;
   amount: number;
 }
@@ -50,25 +50,32 @@ export function calculateFinancialSummary(
 
 export function calculateMatchDayRevenue(club: Club, isHome: boolean): number {
   if (!isHome) return 0;
-  const baseTicket = club.reputation * 500;
-  const attendance = Math.floor(club.infrastructure * 300 + Math.random() * 5000);
-  return Math.floor(baseTicket + attendance * 15);
+  const baseTicket = club.reputation * 1500;
+  const attendance = Math.floor(club.infrastructure * 500 + Math.random() * 8000);
+  return Math.floor(baseTicket + attendance * 25);
 }
 
-export function calculatePrizeForPosition(position: number): number {
+export function calculateMonthlyExpenses(club: Club): number {
+  const staffCosts = club.reputation * 8000;
+  const stadiumMaint = club.infrastructure * 12000;
+  return Math.floor(staffCosts + stadiumMaint);
+}
+
+export function calculatePrizeForPosition(position: number, leagueLevel: string = "Série A"): number {
+  const multiplier = leagueLevel === "Série A" ? 1 : 0.4;
   const prizes: Record<number, number> = {
-    1: 5000000,
-    2: 3000000,
-    3: 2000000,
-    4: 1500000,
-    5: 1000000,
-    6: 800000,
-    7: 600000,
-    8: 400000,
-    9: 200000,
-    10: 100000,
+    1: 15000000,
+    2: 10000000,
+    3: 7500000,
+    4: 5000000,
+    5: 3000000,
+    6: 2000000,
+    7: 1500000,
+    8: 1000000,
+    9: 500000,
+    10: 250000,
   };
-  return prizes[position] || 0;
+  return (prizes[position] || 0) * multiplier;
 }
 
 export function generateSponsor(club: Club): import("../types/game").Sponsor {

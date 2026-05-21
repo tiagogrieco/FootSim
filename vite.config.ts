@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   clearScreen: false,
+  base: process.env.GITHUB_PAGES ? "/FootSim/" : "/",
   server: {
     port: 5173,
     strictPort: true,

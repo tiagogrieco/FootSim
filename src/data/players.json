@@ -16,7 +16,7 @@
       "physical": 70,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 73,
     "potentialAbility": 91,
     "morale": 72,
     "fitness": 86,
@@ -40,7 +40,7 @@
       "physical": 68,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 68,
     "potentialAbility": 93,
     "morale": 81,
     "fitness": 91,
@@ -64,7 +64,7 @@
       "physical": 81,
       "goalkeeping": 88
     },
-    "currentAbility": 0,
+    "currentAbility": 79,
     "potentialAbility": 88,
     "morale": 83,
     "fitness": 84,
@@ -88,7 +88,7 @@
       "physical": 71,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 70,
     "potentialAbility": 88,
     "morale": 88,
     "fitness": 91,
@@ -112,7 +112,7 @@
       "physical": 74,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 68,
     "potentialAbility": 92,
     "morale": 75,
     "fitness": 82,
@@ -136,7 +136,7 @@
       "physical": 69,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 72,
     "potentialAbility": 91,
     "morale": 75,
     "fitness": 81,
@@ -160,7 +160,7 @@
       "physical": 70,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 64,
     "potentialAbility": 84,
     "morale": 79,
     "fitness": 97,
@@ -184,7 +184,7 @@
       "physical": 76,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 64,
     "potentialAbility": 85,
     "morale": 66,
     "fitness": 96,
@@ -208,7 +208,7 @@
       "physical": 72,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 75,
     "potentialAbility": 88,
     "morale": 84,
     "fitness": 90,
@@ -232,7 +232,7 @@
       "physical": 78,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 70,
     "potentialAbility": 92,
     "morale": 73,
     "fitness": 80,
@@ -256,7 +256,7 @@
       "physical": 71,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 70,
     "potentialAbility": 89,
     "morale": 67,
     "fitness": 93,
@@ -280,7 +280,7 @@
       "physical": 70,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 71,
     "potentialAbility": 90,
     "morale": 84,
     "fitness": 83,
@@ -304,7 +304,7 @@
       "physical": 72,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 66,
     "potentialAbility": 91,
     "morale": 69,
     "fitness": 85,
@@ -328,7 +328,7 @@
       "physical": 75,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 70,
     "potentialAbility": 92,
     "morale": 67,
     "fitness": 80,
@@ -352,7 +352,7 @@
       "physical": 73,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 67,
     "potentialAbility": 89,
     "morale": 70,
     "fitness": 88,
@@ -376,7 +376,7 @@
       "physical": 76,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 69,
     "potentialAbility": 91,
     "morale": 89,
     "fitness": 93,
@@ -400,7 +400,7 @@
       "physical": 80,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 67,
     "potentialAbility": 91,
     "morale": 78,
     "fitness": 86,
@@ -424,7 +424,7 @@
       "physical": 73,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 64,
     "potentialAbility": 91,
     "morale": 66,
     "fitness": 93,
@@ -448,7 +448,7 @@
       "physical": 63,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 64,
     "potentialAbility": 82,
     "morale": 67,
     "fitness": 90,
@@ -472,7 +472,7 @@
       "physical": 73,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 68,
     "potentialAbility": 85,
     "morale": 83,
     "fitness": 88,
@@ -496,7 +496,7 @@
       "physical": 77,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 62,
     "potentialAbility": 80,
     "morale": 87,
     "fitness": 87,
@@ -520,7 +520,7 @@
       "physical": 61,
       "goalkeeping": 71
     },
-    "currentAbility": 0,
+    "currentAbility": 61,
     "potentialAbility": 76,
     "morale": 86,
     "fitness": 85,
@@ -544,7 +544,7 @@
       "physical": 68,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 59,
     "potentialAbility": 84,
     "morale": 85,
     "fitness": 86,
@@ -568,7 +568,7 @@
       "physical": 67,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 54,
     "potentialAbility": 77,
     "morale": 84,
     "fitness": 82,
@@ -592,7 +592,7 @@
       "physical": 62,
       "goalkeeping": 0
     },
-    "currentAbility": 0,
+    "currentAbility": 61,
     "potentialAbility": 80,
     "morale": 89,
     "fitness": 84,

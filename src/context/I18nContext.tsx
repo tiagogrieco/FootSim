@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, type ReactNode } from "react";
 import ptBR from "../locales/pt-BR.json";
 import enUS from "../locales/en-US.json";

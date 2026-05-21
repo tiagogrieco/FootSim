@@ -197,7 +197,12 @@ export default function ScoutingView() {
                       </span>
                     </td>
                     <td>{player.age}</td>
-                    <td style={{ fontSize: "12px" }}>{club.name}</td>
+                    <td style={{ fontSize: "12px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <img src={`/assets/clubs/logos/${club.id}.png`} style={{ width: "20px", height: "20px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        {club.name}
+                      </div>
+                    </td>
                     <td style={{ fontWeight: 700, color: getAttrColor(player.currentAbility) }}>{player.currentAbility}</td>
                     <td style={{ fontWeight: 700, color: getAttrColor(player.potentialAbility) }}>{player.potentialAbility}</td>
                     <td style={{ color: "var(--color-accent-secondary)", fontWeight: 500 }}>{formatCurrency(player.marketValue)}</td>
@@ -222,8 +227,10 @@ export default function ScoutingView() {
                   <h2 style={{ fontSize: "18px", fontWeight: 800 }}>{selectedPlayer.player.name}</h2>
                   <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
                     <span style={{ ...styles.posBadge, background: getBadgeColor(selectedPlayer.player.positionCategory) }}>{selectedPlayer.player.position}</span>
-                    <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                      {selectedPlayer.player.age} anos • {selectedPlayer.club.name}
+                    <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "4px" }}>
+                      {selectedPlayer.player.age} anos • 
+                      <img src={`/assets/clubs/logos/${selectedPlayer.club.id}.png`} style={{ width: "16px", height: "16px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      {selectedPlayer.club.name}
                     </span>
                   </div>
                 </div>

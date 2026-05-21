@@ -28,8 +28,8 @@ export default function ModManagerView() {
 
         localStorage.setItem("footsim_custom_data", content);
         setStatusMsg(t("mod_loaded_success") || "Mod pack loaded successfully! Start a new game to see the changes.");
-      } catch (err: any) {
-        setErrorMsg(err.message || t("mod_load_error") || "Error reading JSON file.");
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : t("mod_load_error") || "Error reading JSON file.");
       }
     };
     reader.readAsText(file);

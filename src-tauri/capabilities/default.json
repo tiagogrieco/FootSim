@@ -6,6 +6,10 @@
     "main"
   ],
   "permissions": [
-    "core:default"
+    "core:default",
+    "fs:default",
+    "fs:allow-app-write",
+    "fs:allow-app-read",
+    "dialog:default"
   ]
 }
