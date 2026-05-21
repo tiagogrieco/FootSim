@@ -3,11 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Variáveis de ambiente do Supabase não encontradas. Verifique o arquivo .env.');
+function createNoOpClient() {
+  const noOp = () => Promise.resolve({ data: null, error: null } as never);
+  return {
+    auth: { getSession: noOp, onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }) },
+    from: () => ({ select: () => ({ eq: () => ({ single: noOp, order: () => ({ limit: () => ({ data: [] }) }) }) }), insert: noOp, upsert: noOp, delete: () => ({ eq: () => noOp }) }),
+    storage: { from: () => ({ upload: noOp, download: noOp }) },
+  } as unknown as ReturnType<typeof createClient>;
 }
 
-export const supabase = createClient(
-  supabaseUrl || '',
-  supabaseAnonKey || ''
-);
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createNoOpClient();
