@@ -190,7 +190,7 @@ export default function LeagueView() {
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <div style={{ width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <img 
-                            src={`/assets/clubs/logos/${s.clubId}.png`} 
+                            src={`assets/clubs/logos/${s.clubId}.png`} 
                             alt={s.clubShortName}
                             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                             onError={(e) => {
@@ -333,7 +333,7 @@ export default function LeagueView() {
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div style={{ width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                               <img 
-                                src={`/assets/clubs/logos/${entry.clubId}.png`} 
+                                src={`assets/clubs/logos/${entry.clubId}.png`} 
                                 alt={entry.clubShort}
                                 style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                                 onError={(e) => {
@@ -413,7 +413,7 @@ export default function LeagueView() {
                     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                       <div style={{ width: "16px", height: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <img 
-                          src={`/assets/clubs/logos/${leader.clubId}.png`} 
+                          src={`assets/clubs/logos/${leader.clubId}.png`} 
                           alt={leader.clubShort}
                           style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                           onError={(e) => {
@@ -502,7 +502,7 @@ export default function LeagueView() {
                       fontWeight: f.result && f.result.homeGoals > f.result.awayGoals ? 800 : 400,
                     }}>
                       {getClubFull(f.homeClubId)}
-                      <img src={`/assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={`assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                     <div style={styles.fixtureScore}>
                       <span style={styles.scoreNum}>{f.result?.homeGoals}</span>
@@ -514,7 +514,7 @@ export default function LeagueView() {
                       display: "flex", alignItems: "center", justifyContent: "flex-start",
                       fontWeight: f.result && f.result.awayGoals > f.result.homeGoals ? 800 : 400,
                     }}>
-                      <img src={`/assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={`assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       {getClubFull(f.awayClubId)}
                     </div>
                   </div>
@@ -547,11 +547,11 @@ export default function LeagueView() {
                   <div style={styles.fixtureTeams}>
                     <div style={{ ...styles.fixTeam, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
                       {getClubFull(f.homeClubId)}
-                      <img src={`/assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={`assets/clubs/logos/${f.homeClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginLeft: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                     <span style={{ color: "var(--color-text-muted)", fontSize: "13px" }}>vs</span>
                     <div style={{ ...styles.fixTeam, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-                      <img src={`/assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={`assets/clubs/logos/${f.awayClubId}.png`} style={{ width: "24px", height: "24px", objectFit: "contain", marginRight: "8px" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       {getClubFull(f.awayClubId)}
                     </div>
                   </div>

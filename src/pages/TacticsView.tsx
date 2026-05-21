@@ -329,7 +329,7 @@ export default function TacticsView() {
                 }}>
                   {item.player && (
                     <img
-                      src={`/assets/players/faces/${item.player.id}.png`}
+                      src={`assets/players/faces/${item.player.id}.png`}
                       alt={item.player.name}
                       style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%", position: "absolute", inset: 0 }}
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
