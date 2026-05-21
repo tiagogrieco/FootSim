@@ -18,6 +18,8 @@ function createNoOpClient() {
   } as unknown as ReturnType<typeof createClient>;
 }
 
-export const supabase = supabaseUrl && supabaseAnonKey
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : createNoOpClient();

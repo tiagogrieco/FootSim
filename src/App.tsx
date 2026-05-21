@@ -7,7 +7,7 @@ import { BattlePassProvider } from "./context/BattlePassContext";
 import { HallOfFameProvider } from "./context/HallOfFameContext";
 import { I18nProvider } from "./context/I18nContext";
 import { Auth } from "./components/Auth";
-import { supabase } from "./lib/supabase";
+import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 import MainMenu from "./pages/MainMenu";
@@ -67,7 +67,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!user && isSupabaseConfigured) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
         <div className="mb-8 text-center">
