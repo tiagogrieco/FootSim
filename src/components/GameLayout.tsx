@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useState, useCallback, useEffect } from "react";
 import { useGame } from "../context/GameContext";
+import AnimatedOutlet from "./AnimatedOutlet";
 import { useTranslation } from "../context/I18nContext";
 import { formatCurrency } from "../engine/financeEngine";
 import SeasonEndModal from "./SeasonEndModal";
@@ -366,7 +367,7 @@ export default function GameLayout() {
 
       {/* Main Content */}
       <main style={styles.main}>
-        <Outlet />
+        <AnimatedOutlet />
       </main>
 
       {/* Save Modal */}

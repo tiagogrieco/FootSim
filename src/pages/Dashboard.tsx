@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useGame } from "../context/GameContext";
 import { getAttrColor, type InboxMessage } from "../types/game";
 import { formatCurrency } from "../engine/financeEngine";
@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { FORMATIONS, type Formation } from "../data/formations";
 import { autoBuildLineup } from "../engine/autoLineupEngine";
 import { useBoard } from "../context/BoardContext";
+import OnboardingTutorial from "../components/OnboardingTutorial";
 
 export default function Dashboard() {
   const {
@@ -19,6 +20,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [showPreMatch, setShowPreMatch] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return localStorage.getItem("footsim_tutorial_seen") !== "true";
+  });
+  const dismissTutorial = useCallback(() => {
+    localStorage.setItem("footsim_tutorial_seen", "true");
+    setShowTutorial(false);
+  }, []);
 
   const leagueStandings = standings.filter(s => s.league === playerClub.league);
   const myStanding = leagueStandings.find(s => s.clubId === playerClub.id);
@@ -949,6 +957,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      {showTutorial && <OnboardingTutorial onClose={dismissTutorial} />}
     </div>
   );
 }
