@@ -88,7 +88,7 @@ export default function App() {
         <MetaProvider>
          <BattlePassProvider>
           <HallOfFameProvider>
-           <BrowserRouter>
+           <BrowserRouter basename={import.meta.env.BASE_URL}>
             <Routes>
               <Route path="/" element={<MainMenu />} />
               <Route path="/select-team" element={<TeamSelection />} />
