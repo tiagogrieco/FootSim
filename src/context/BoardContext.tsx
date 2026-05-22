@@ -234,7 +234,12 @@ export function BoardProvider({ children }: { children: ReactNode }) {
 
   const dismissPress = useCallback(() => setPendingPress(null), []);
 
-  const resetBoard = useCallback(() => { setState(EMPTY_STATE); setPendingPress(null); setIsSacked(false); }, []);
+  const resetBoard = useCallback(() => { 
+    setState(EMPTY_STATE); 
+    setPendingPress(null); 
+    setIsSacked(false); 
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* */ }
+  }, []);
 
   const adjustBoardConfidence = useCallback((delta: number, reason: string) => {
     const date = new Date().toISOString().split("T")[0];

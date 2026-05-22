@@ -26,7 +26,6 @@ export default function TeamSelection() {
     e.preventDefault();
     if (!customName.trim() || !customShortName.trim()) return;
     
-    resetMeta();
     startNewGame(undefined, {
       name: customName.trim(),
       shortName: customShortName.trim().substring(0, 3).toUpperCase(),
@@ -35,6 +34,7 @@ export default function TeamSelection() {
         secondary: secondaryColor
       }
     }, roadToGlory, difficulty);
+    resetMeta();
     
     setShowCreateModal(false);
     navigate("/presentation");
@@ -56,8 +56,8 @@ export default function TeamSelection() {
   const handleSelectClub = (clubId: number) => {
     const club = allClubs.find(c => c.id === clubId);
     if (club && isClubLocked(club)) return;
-    resetMeta();
     startNewGame(clubId, undefined, roadToGlory, difficulty);
+    resetMeta();
     navigate("/presentation");
   };
 

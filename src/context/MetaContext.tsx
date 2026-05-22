@@ -291,6 +291,7 @@ export function MetaProvider({ children }: { children: ReactNode }) {
   const resetMeta = useCallback(() => {
     setState(EMPTY_STATE);
     setToastQueue([]);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* */ }
   }, []);
 
   const unreadNewsCount = state.news.filter(n => !n.read).length;
