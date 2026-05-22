@@ -22,6 +22,7 @@ export interface MatchEvent {
 }
 
 export interface MatchResult {
+  matchId: string; // unique id for deduplication
   homeClub: Club;
   awayClub: Club;
   homeGoals: number;
@@ -859,6 +860,7 @@ export function simulateMatch(
   const awayRatingCalc = Math.min(99, Math.max(20, awayAvgCA * 0.7 + (awayGoals > homeGoals ? 8 : awayGoals === homeGoals ? 3 : -2) + Math.random() * 6));
 
   return {
+    matchId: `${homeClub.id}-${awayClub.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     homeClub, awayClub,
     homeGoals, awayGoals,
     events,

@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
 import { useMeta } from "../context/MetaContext";
+import { useBoard } from "../context/BoardContext";
 import { useTranslation } from "../context/I18nContext";
 
 export default function TeamSelection() {
   const navigate = useNavigate();
   const { allClubs, startNewGame } = useGame();
   const { resetMeta } = useMeta();
+  const { resetBoard } = useBoard();
   const { t } = useTranslation();
 
   const [selectedLeague, setSelectedLeague] = useState<string>("Série A");
@@ -35,6 +37,7 @@ export default function TeamSelection() {
       }
     }, roadToGlory, difficulty);
     resetMeta();
+    resetBoard();
     
     setShowCreateModal(false);
     navigate("/presentation");
@@ -58,6 +61,7 @@ export default function TeamSelection() {
     if (club && isClubLocked(club)) return;
     startNewGame(clubId, undefined, roadToGlory, difficulty);
     resetMeta();
+    resetBoard();
     navigate("/presentation");
   };
 
