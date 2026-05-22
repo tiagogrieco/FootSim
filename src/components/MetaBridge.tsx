@@ -27,7 +27,7 @@ function getMatchKey(match: MatchResult): string {
 }
 
 export default function MetaBridge() {
-  const { lastMatchResult, playerClub, currentDate, standings, seasonEndResult, allClubs, setJobOffers, gameStarted } = useGame();
+  const { lastMatchResult, lastMatchViewed, playerClub, currentDate, standings, seasonEndResult, allClubs, setJobOffers, gameStarted } = useGame();
   const { trackMatch, trackBestPosition, syncChallengesForDate, trackTrophy, profile } = useMeta();
 
   const processedMatchesRef = useRef<Set<string>>(getProcessedMatches());
@@ -46,15 +46,16 @@ export default function MetaBridge() {
     if (currentDate) syncChallengesForDate(currentDate);
   }, [currentDate, syncChallengesForDate]);
 
-  // Track each NEW match result (persisted across component remounts)
+  // Track each NEW match result ONLY after user has viewed it
   useEffect(() => {
     if (!lastMatchResult) return;
+    if (!lastMatchViewed) return; // wait until MatchView finishes
     const key = getMatchKey(lastMatchResult);
     if (processedMatchesRef.current.has(key)) return;
     processedMatchesRef.current.add(key);
     saveProcessedMatches(processedMatchesRef.current);
     trackMatch(lastMatchResult, playerClub.id);
-  }, [lastMatchResult, playerClub.id, trackMatch]);
+  }, [lastMatchResult, lastMatchViewed, playerClub.id, trackMatch]);
 
   // Track best league position (only after at least 1 match played)
   useEffect(() => {

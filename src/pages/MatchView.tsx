@@ -37,7 +37,7 @@ function getMatchKey(m: { homeClub: { id: number }; awayClub: { id: number }; ho
 }
 
 export default function MatchView() {
-  const { lastMatchResult, matchHistory, playerClub } = useGame();
+  const { lastMatchResult, markLastMatchAsViewed, matchHistory, playerClub } = useGame();
   const { setPressHold, releasePress } = useBoard();
   const navigate = useNavigate();
   const match = lastMatchResult;
@@ -84,8 +84,9 @@ export default function MatchView() {
   useEffect(() => {
     if (simState === "finished" && match) {
       seenMatchIds.add(getMatchKey(match));
+      markLastMatchAsViewed();
     }
-  }, [simState, match]);
+  }, [simState, match, markLastMatchAsViewed]);
 
   // Hold press conference while replay runs; release when finished or unmount
   useEffect(() => {

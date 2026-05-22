@@ -54,6 +54,7 @@ interface GameContextType {
   currentDate: string;
   season: number;
   lastMatchResult: MatchResult | null;
+  lastMatchViewed: boolean;
   matchHistory: MatchResult[];
   trainingFocus: import("../engine/trainingEngine").TrainingFocus;
   transferMarket: import("../engine/transferEngine").TransferListing[];
@@ -107,6 +108,7 @@ interface GameContextType {
   ) => void;
   advanceDay: () => void;
   simulatePlayerMatch: () => void;
+  markLastMatchAsViewed: () => void;
   setTrainingFocus: (focus: import("../engine/trainingEngine").TrainingFocus) => void;
   advanceMonth: () => void;
   refreshTransferMarket: () => void;
@@ -173,6 +175,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
   const [sponsorOffers, setSponsorOffers] = useState<Sponsor[]>([]);
   const [jobOffers, setJobOffers] = useState<JobOffer[]>([]);
+  const [lastMatchViewed, setLastMatchViewed] = useState(true);
   const [forceSaveFlag, setForceSaveFlag] = useState(0);
 
   const squadManager = useSquadManager();
@@ -480,6 +483,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }, 500);
   }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast, resetBoard]);
 
+  const markLastMatchAsViewed = useCallback(() => {
+    setLastMatchViewed(true);
+  }, []);
+
   const advanceDay = useCallback(() => {
     const oldMonth = new Date(seasonManager.currentDate).getMonth();
     const localDate = new Date(seasonManager.currentDate);
@@ -750,6 +757,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   ]);
 
   const simulatePlayerMatch = useCallback(() => {
+    setLastMatchViewed(false);
     const result = simulateMatchDay(
       seasonManager.currentDate,
       matchManager.fixtures,
@@ -1515,6 +1523,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       currentDate: seasonManager.currentDate,
       season: seasonManager.season,
       lastMatchResult: matchManager.lastMatchResult,
+      lastMatchViewed,
       matchHistory: matchManager.matchHistory,
       trainingFocus: squadManager.trainingFocus,
       transferMarket: transferManager.transferMarket,
@@ -1532,6 +1541,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       startNewGame,
       advanceDay,
       simulatePlayerMatch,
+      markLastMatchAsViewed,
       setTrainingFocus,
       advanceMonth,
       refreshTransferMarket,
