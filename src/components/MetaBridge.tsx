@@ -7,7 +7,7 @@ import { useMeta } from "../context/MetaContext";
 import { generateJobOffers } from "../engine/careerEngine";
 
 export default function MetaBridge() {
-  const { lastMatchResult, playerClub, currentDate, standings, seasonEndResult, allClubs, setJobOffers } = useGame();
+  const { lastMatchResult, playerClub, currentDate, standings, seasonEndResult, allClubs, setJobOffers, gameStarted } = useGame();
   const { trackMatch, trackBestPosition, syncChallengesForDate, trackTrophy, profile } = useMeta();
 
   const lastMatchRef = useRef<typeof lastMatchResult>(null);
@@ -26,11 +26,12 @@ export default function MetaBridge() {
     trackMatch(lastMatchResult, playerClub.id);
   }, [lastMatchResult, playerClub.id, trackMatch]);
 
-  // Track best league position
+  // Track best league position (only after at least 1 match played)
   useEffect(() => {
+    if (!gameStarted || profile.totalMatchesManaged === 0) return;
     const idx = standings.findIndex(s => s.clubId === playerClub.id);
     if (idx >= 0) trackBestPosition(idx + 1);
-  }, [standings, playerClub.id, trackBestPosition]);
+  }, [standings, playerClub.id, trackBestPosition, gameStarted, profile.totalMatchesManaged]);
 
   // Track trophies on season end + generate job offers
   useEffect(() => {
