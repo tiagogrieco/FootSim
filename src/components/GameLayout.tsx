@@ -193,7 +193,7 @@ export default function GameLayout() {
         <div style={styles.clubSection}>
           <div style={styles.badgeContainer}>
             <img 
-              src={`assets/clubs/logos/${playerClub.id}.png`} 
+              src={`${import.meta.env.BASE_URL}assets/clubs/logos/${playerClub.id}.png`} 
               alt={playerClub.shortName}
               style={styles.clubLogo}
               onError={(e) => {

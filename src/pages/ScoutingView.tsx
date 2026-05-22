@@ -199,7 +199,7 @@ export default function ScoutingView() {
                     <td>{player.age}</td>
                     <td style={{ fontSize: "12px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <img src={`assets/clubs/logos/${club.id}.png`} style={{ width: "20px", height: "20px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                        <img src={`${import.meta.env.BASE_URL}assets/clubs/logos/${club.id}.png`} style={{ width: "20px", height: "20px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         {club.name}
                       </div>
                     </td>
@@ -229,7 +229,7 @@ export default function ScoutingView() {
                     <span style={{ ...styles.posBadge, background: getBadgeColor(selectedPlayer.player.positionCategory) }}>{selectedPlayer.player.position}</span>
                     <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "4px" }}>
                       {selectedPlayer.player.age} anos • 
-                      <img src={`assets/clubs/logos/${selectedPlayer.club.id}.png`} style={{ width: "16px", height: "16px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                      <img src={`${import.meta.env.BASE_URL}assets/clubs/logos/${selectedPlayer.club.id}.png`} style={{ width: "16px", height: "16px", objectFit: "contain" }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                       {selectedPlayer.club.name}
                     </span>
                   </div>

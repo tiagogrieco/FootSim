@@ -192,7 +192,7 @@ export default function Dashboard() {
                     overflow: "hidden"
                   }}>
                     <img 
-                      src={`assets/clubs/logos/${playerClub.id}.png`}
+                      src={`${import.meta.env.BASE_URL}assets/clubs/logos/${playerClub.id}.png`}
                       alt={playerClub.name}
                       style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px" }}
                       onError={(e) => {
@@ -218,7 +218,7 @@ export default function Dashboard() {
                     overflow: "hidden"
                   }}>
                     <img 
-                      src={`assets/clubs/logos/${opponentClub.id}.png`}
+                      src={`${import.meta.env.BASE_URL}assets/clubs/logos/${opponentClub.id}.png`}
                       alt={opponentClub.name}
                       style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px" }}
                       onError={(e) => {
@@ -516,7 +516,7 @@ export default function Dashboard() {
                   display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
                 }}>
                   <img 
-                    src={`assets/clubs/logos/${(isHome ? playerClub : opponentClub).id}.png`}
+                    src={`${import.meta.env.BASE_URL}assets/clubs/logos/${(isHome ? playerClub : opponentClub).id}.png`}
                     alt={(isHome ? playerClub : opponentClub).name}
                     style={{ width: "100%", height: "100%", objectFit: "contain", padding: "4px" }}
                     onError={(e) => {
@@ -538,7 +538,7 @@ export default function Dashboard() {
                   display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden"
                 }}>
                   <img 
-                    src={`assets/clubs/logos/${(!isHome ? playerClub : opponentClub).id}.png`}
+                    src={`${import.meta.env.BASE_URL}assets/clubs/logos/${(!isHome ? playerClub : opponentClub).id}.png`}
                     alt={(!isHome ? playerClub : opponentClub).name}
                     style={{ width: "100%", height: "100%", objectFit: "contain", padding: "4px" }}
                     onError={(e) => {

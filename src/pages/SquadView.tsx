@@ -116,7 +116,7 @@ export default function SquadView() {
         <div style={styles.headerLeft}>
           <div style={{ width: "48px", height: "48px", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <img 
-              src={`assets/clubs/logos/${club.id}.png`} 
+              src={`${import.meta.env.BASE_URL}assets/clubs/logos/${club.id}.png`} 
               alt={club.shortName}
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
               onError={(e) => { e.currentTarget.style.display = 'none'; }}

@@ -287,7 +287,7 @@ export default function TeamSelection() {
             <div style={styles.cardContent}>
               <div style={styles.badge}>
                 <img 
-                  src={`assets/clubs/logos/${club.id}.png`} 
+                  src={`${import.meta.env.BASE_URL}assets/clubs/logos/${club.id}.png`} 
                   alt={club.shortName}
                   style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px" }}
                   onError={(e) => {

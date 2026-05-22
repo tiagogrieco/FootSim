@@ -134,7 +134,7 @@ export default function ClubView() {
         <div style={styles.heroBg}>
           <div style={styles.shieldContainer}>
             <img 
-              src={`assets/clubs/logos/${club.id}.png`} 
+              src={`${import.meta.env.BASE_URL}assets/clubs/logos/${club.id}.png`} 
               alt={club.shortName}
               style={styles.shieldLogo}
               onError={(e) => {
@@ -236,7 +236,7 @@ export default function ClubView() {
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Principal</span>
               <div style={{ width: "100px", height: "100px", display: "flex", justifyContent: "center", alignItems: "center" }}>
                 <img 
-                  src={`assets/clubs/kits/${club.id}_home.png`} 
+                  src={`${import.meta.env.BASE_URL}assets/clubs/kits/${club.id}_home.png`} 
                   alt="Principal" 
                   style={{ maxWidth: "100%", maxHeight: "100%", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" }} 
                   onError={(e) => e.currentTarget.style.opacity = "0.2"}
@@ -247,7 +247,7 @@ export default function ClubView() {
               <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Reserva</span>
               <div style={{ width: "100px", height: "100px", display: "flex", justifyContent: "center", alignItems: "center" }}>
                 <img 
-                  src={`assets/clubs/kits/${club.id}_away.png`} 
+                  src={`${import.meta.env.BASE_URL}assets/clubs/kits/${club.id}_away.png`} 
                   alt="Reserva" 
                   style={{ maxWidth: "100%", maxHeight: "100%", filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.3))" }} 
                   onError={(e) => e.currentTarget.style.opacity = "0.2"}

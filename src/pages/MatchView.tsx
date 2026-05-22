@@ -320,7 +320,7 @@ export default function MatchView() {
             position: "relative"
           }}>
             <img 
-              src={`assets/clubs/logos/${match.homeClub.id}.png`}
+              src={`${import.meta.env.BASE_URL}assets/clubs/logos/${match.homeClub.id}.png`}
               alt={match.homeClub.shortName}
               style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px", position: "absolute", inset: 0 }}
               onError={(e) => {
@@ -362,7 +362,7 @@ export default function MatchView() {
             position: "relative"
           }}>
             <img 
-              src={`assets/clubs/logos/${match.awayClub.id}.png`}
+              src={`${import.meta.env.BASE_URL}assets/clubs/logos/${match.awayClub.id}.png`}
               alt={match.awayClub.shortName}
               style={{ width: "100%", height: "100%", objectFit: "contain", padding: "6px", position: "absolute", inset: 0 }}
               onError={(e) => {

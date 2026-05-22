@@ -50,7 +50,7 @@ export default function PresentationView() {
               <img src={playerClub.logoUrl} alt={playerClub.name} style={{ width: "100%", height: "100%", objectFit: "contain", padding: "8px" }} />
             ) : (
               <img 
-                src={`assets/clubs/logos/${playerClub.id}.png`} 
+                src={`${import.meta.env.BASE_URL}assets/clubs/logos/${playerClub.id}.png`} 
                 alt={playerClub.shortName}
                 style={{ width: "100%", height: "100%", objectFit: "contain", padding: "8px" }}
                 onError={(e) => {
