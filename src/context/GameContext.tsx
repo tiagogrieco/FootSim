@@ -22,6 +22,7 @@ import { simulateMatchDay } from "../engine/matchDayEngine";
 // getTotalRounds moved to useMatchManager
 import { addXP } from "../engine/rpgEngine";
 import { useBoard } from "./BoardContext";
+import { useToast } from "../hooks/useToast";
 import clubsData from "../data/clubs.json";
 
 import { useSquadManager } from "../hooks/useSquadManager";
@@ -156,6 +157,7 @@ export function useGame(): GameContextType {
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const { confidence, adjustBoardConfidence } = useBoard();
+  const { push: pushToast } = useToast();
   const [playerClub, setPlayerClub] = useState<Club>(clubsData[0] as Club);
   const [allClubs, setAllClubs] = useState<Club[]>(clubsData as Club[]);
   const [gameStarted, setGameStarted] = useState(false);
@@ -434,6 +436,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     inboxManager.clearNotification();
     setSponsorOffers([]);
     setGameStarted(true);
+    pushToast({ title: "Novo jogo iniciado!", message: `Você assumiu o comando do ${initialClub.name}. Boa sorte, treinador!`, type: "success" });
 
     // Autosave right after new game
     actionCountRef.current = 0;
@@ -458,7 +461,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
       autoSave(data);
     }, 500);
-  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager]);
+  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast]);
 
   const advanceDay = useCallback(() => {
     const oldMonth = new Date(seasonManager.currentDate).getMonth();
@@ -622,6 +625,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     triggerAutoSave();
 
+    if (stopReason === "match") {
+      pushToast({ title: "⚽ Dia de jogo!", message: stopDetail, type: "match" });
+    } else if (stopReason === "offer") {
+      pushToast({ title: "📨 Nova notificação", message: stopDetail, type: "offer" });
+    } else if (stopReason === "event") {
+      pushToast({ title: "📢 Acontecimento", message: stopDetail, type: "warning" });
+    } else {
+      pushToast({ title: "📅 Dia avançado", message: `Avançado até ${finalDate.split("-")[2]}/${finalDate.split("-")[1]}`, type: "info" });
+    }
+
     // Generate deferred emails outside the synchronous loop
     if (pendingBoardReview) {
       generateBoardReviewEmail(
@@ -716,7 +729,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [
     seasonManager, squadManager, matchManager, financeManager, transferManager,
-    inboxManager, playerClub, allClubs, triggerAutoSave, confidence,
+    inboxManager, playerClub, allClubs, triggerAutoSave, confidence, pushToast,
   ]);
 
   const simulatePlayerMatch = useCallback(() => {
@@ -769,9 +782,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     triggerAutoSave();
+
+    if (result.playerMatch) {
+      const { homeGoals, awayGoals, homeClub, awayClub } = result.playerMatch;
+      const isHomeClub = homeClub.id === playerClub.id;
+      const myGoals = isHomeClub ? homeGoals : awayGoals;
+      const oppGoals = isHomeClub ? awayGoals : homeGoals;
+      const oppName = isHomeClub ? awayClub.shortName : homeClub.shortName;
+      const resultType = myGoals > oppGoals ? "success" : myGoals < oppGoals ? "error" : "warning";
+      const title = myGoals > oppGoals ? "✅ Vitória!" : myGoals < oppGoals ? "❌ Derrota" : "🤝 Empate";
+      pushToast({ title, message: `${playerClub.shortName} ${myGoals} x ${oppGoals} ${oppName}`, type: resultType });
+    }
   }, [
     seasonManager, matchManager, squadManager, financeManager, inboxManager,
-    playerClub, allClubs, triggerAutoSave,
+    playerClub, allClubs, triggerAutoSave, pushToast,
   ]);
 
   const setTrainingFocus = useCallback((focus: import("../engine/trainingEngine").TrainingFocus) => {

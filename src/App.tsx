@@ -6,6 +6,8 @@ import { BoardProvider } from "./context/BoardContext";
 import { BattlePassProvider } from "./context/BattlePassContext";
 import { HallOfFameProvider } from "./context/HallOfFameContext";
 import { I18nProvider } from "./context/I18nContext";
+import { ToastProvider } from "./context/ToastContext";
+import GameToast from "./components/GameToast";
 import { Auth } from "./components/Auth";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -42,13 +44,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen to Auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -67,64 +67,69 @@ export default function App() {
     );
   }
 
-  if (!user && isSupabaseConfigured) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2 tracking-tight">
-            FootSim
-          </h1>
-          <p className="text-slate-400">Sincronização na nuvem ativada</p>
-        </div>
-        <Auth />
+  const loginScreen = (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+      <div className="mb-8 text-center">
+        <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2 tracking-tight">
+          FootSim
+        </h1>
+        <p className="text-slate-400">Sincronização na nuvem ativada</p>
       </div>
-    );
-  }
+      <Auth />
+    </div>
+  );
 
-  return (
+  const gameRoutes = (
     <I18nProvider>
       <BoardProvider>
-       <GameProvider>
-        <MetaProvider>
-         <BattlePassProvider>
-          <HallOfFameProvider>
-           <BrowserRouter basename={import.meta.env.BASE_URL}>
-            <Routes>
-              <Route path="/" element={<MainMenu />} />
-              <Route path="/select-team" element={<TeamSelection />} />
-              <Route path="/presentation" element={<PresentationView />} />
-              <Route path="/mods" element={<ModManagerView />} />
-              <Route path="/game" element={<GameLayout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="squad" element={<SquadView />} />
-                <Route path="match" element={<MatchView />} />
-                <Route path="league" element={<LeagueView />} />
-                <Route path="tactics" element={<TacticsView />} />
-                <Route path="training" element={<TrainingView />} />
-                <Route path="transfers" element={<TransferView />} />
-                <Route path="scouting" element={<ScoutingView />} />
-                <Route path="packs" element={<PackShop />} />
-                <Route path="finances" element={<FinancesView />} />
-                <Route path="player/:id" element={<PlayerProfileView />} />
-                <Route path="club" element={<ClubView />} />
-                <Route path="club/:id" element={<ClubView />} />
-                <Route path="achievements" element={<AchievementsPage />} />
-                <Route path="challenges" element={<ChallengesPage />} />
-                <Route path="news" element={<NewsfeedPage />} />
-                <Route path="board" element={<BoardPage />} />
-                <Route path="battlepass" element={<BattlePassPage />} />
-                <Route path="hall-of-fame" element={<HallOfFamePage />} />
-                <Route path="youth" element={<YouthView />} />
-                <Route path="inbox" element={<InboxView />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-           </BrowserRouter>
-          </HallOfFameProvider>
-         </BattlePassProvider>
-        </MetaProvider>
-       </GameProvider>
+        <GameProvider>
+          <MetaProvider>
+            <BattlePassProvider>
+              <HallOfFameProvider>
+                <BrowserRouter basename={import.meta.env.BASE_URL}>
+                  <Routes>
+                    <Route path="/" element={<MainMenu />} />
+                    <Route path="/select-team" element={<TeamSelection />} />
+                    <Route path="/presentation" element={<PresentationView />} />
+                    <Route path="/mods" element={<ModManagerView />} />
+                    <Route path="/game" element={<GameLayout />}>
+                      <Route index element={<Dashboard />} />
+                      <Route path="squad" element={<SquadView />} />
+                      <Route path="match" element={<MatchView />} />
+                      <Route path="league" element={<LeagueView />} />
+                      <Route path="tactics" element={<TacticsView />} />
+                      <Route path="training" element={<TrainingView />} />
+                      <Route path="transfers" element={<TransferView />} />
+                      <Route path="scouting" element={<ScoutingView />} />
+                      <Route path="packs" element={<PackShop />} />
+                      <Route path="finances" element={<FinancesView />} />
+                      <Route path="player/:id" element={<PlayerProfileView />} />
+                      <Route path="club" element={<ClubView />} />
+                      <Route path="club/:id" element={<ClubView />} />
+                      <Route path="achievements" element={<AchievementsPage />} />
+                      <Route path="challenges" element={<ChallengesPage />} />
+                      <Route path="news" element={<NewsfeedPage />} />
+                      <Route path="board" element={<BoardPage />} />
+                      <Route path="battlepass" element={<BattlePassPage />} />
+                      <Route path="hall-of-fame" element={<HallOfFamePage />} />
+                      <Route path="youth" element={<YouthView />} />
+                      <Route path="inbox" element={<InboxView />} />
+                    </Route>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </BrowserRouter>
+              </HallOfFameProvider>
+            </BattlePassProvider>
+          </MetaProvider>
+        </GameProvider>
       </BoardProvider>
     </I18nProvider>
+  );
+
+  return (
+    <ToastProvider>
+      {(!user && isSupabaseConfigured) ? loginScreen : gameRoutes}
+      <GameToast />
+    </ToastProvider>
   );
 }

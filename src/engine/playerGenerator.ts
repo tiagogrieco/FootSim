@@ -101,7 +101,7 @@ export function generateSquadForClub(club: Club): Player[] {
         morale: rand(55, 90),
         fitness: rand(75, 99),
         marketValue: quality * rand(30000, 80000),
-        wage: quality * rand(300, 800),
+        wage: quality * rand(500, 1500),
         seasonStats: createEmptyStats(),
         preferredFoot: pick(FEET),
         personality: pick(PERSONALITIES),
