@@ -5,7 +5,7 @@ import { calculateFinancialSummary, formatCurrency } from "../engine/financeEngi
 type Tab = "overview" | "ledger" | "wages";
 
 export default function FinancesView() {
-  const { playerClub, playerSquad, budget, debt, payOffDebt, financialLedger, upgradeInfrastructure, sponsorOffers, searchSponsors, acceptSponsor } = useGame();
+  const { playerClub, playerSquad, budget, debt, payOffDebt, financialLedger, upgradeInfrastructure, sponsorOffers, searchSponsors, acceptSponsor, financialCrises, isTransferBlocked } = useGame();
   const [tab, setTab] = useState<Tab>("overview");
   const [upgradeMsg, setUpgradeMsg] = useState("");
 
@@ -55,6 +55,44 @@ export default function FinancesView() {
           </span>
         </div>
       </div>
+
+      {/* Financial Crisis Alerts */}
+      {financialCrises > 0 && (
+        <div className="card" style={{ 
+          background: financialCrises >= 3 ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.10)", 
+          border: `1px solid ${financialCrises >= 3 ? "#ef4444" : "#f59e0b"}`,
+          padding: 16,
+          marginBottom: 16,
+          borderRadius: 10,
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: financialCrises >= 3 ? "#ef4444" : "#f59e0b" }}>
+            {financialCrises >= 3 ? "🚨 CRÍTICO: 3ª Crise Financeira" : financialCrises === 2 ? "⚠️ 2ª Crise Financeira" : "⚠️ 1ª Crise Financeira"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4 }}>
+            {financialCrises >= 3 
+              ? "A diretoria está considerando sua demissão por gestão financeira desastrosa."
+              : financialCrises === 2
+              ? "Contratações BLOQUEADAS até a dívida cair abaixo de R$ 200.000."
+              : "Um empréstimo emergencial foi contraído. Cuidado com os gastos."}
+          </div>
+        </div>
+      )}
+      {isTransferBlocked && (
+        <div className="card" style={{ 
+          background: "rgba(239,68,68,0.08)", 
+          border: "1px solid #ef4444",
+          padding: 16,
+          marginBottom: 16,
+          borderRadius: 10,
+        }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#ef4444" }}>
+            🔒 Contratações Bloqueadas
+          </div>
+          <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4 }}>
+            A diretoria bloqueou novas contratações até que a dívida seja reduzida abaixo de R$ 200.000.
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={styles.tabBar}>

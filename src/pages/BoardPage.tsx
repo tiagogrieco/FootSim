@@ -22,7 +22,7 @@ const CONFIDENCE_STYLE: Record<BoardConfidence["label"], { color: string; label:
 };
 
 export default function BoardPage() {
-  const { objectives, confidence, pressHistory } = useBoard();
+  const { objectives, confidence, pressHistory, sackingThreshold } = useBoard();
   const cs = CONFIDENCE_STYLE[confidence.label];
 
   return (
@@ -55,9 +55,15 @@ export default function BoardPage() {
             boxShadow: `0 0 10px ${cs.color}66`,
           }} />
         </div>
-        {confidence.label === "sacking" && (
+        {(confidence.label === "sacking" || confidence.label === "critical") && confidence.sackingRounds > 0 && (
           <div style={{ marginTop: 10, fontSize: 11, color: "#fca5a5", fontWeight: 700 }}>
-            ⚠️ A diretoria está analisando sua saída. Vença a próxima partida ou prepare a mala.
+            ⚠️ A diretoria está analisando sua saída. 
+            Rodadas consecutivas com confiança zerada: <strong>{confidence.sackingRounds}/{sackingThreshold}</strong>
+            {confidence.sackingRounds >= sackingThreshold - 1 && (
+              <span style={{ display: "block", marginTop: 4, color: "#ef4444" }}>
+                🚨 PRÓXIMA RODADA PODE SER A ÚLTIMA!
+              </span>
+            )}
           </div>
         )}
       </div>

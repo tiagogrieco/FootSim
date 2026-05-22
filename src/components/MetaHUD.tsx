@@ -33,6 +33,13 @@ export default function MetaHUD() {
         <span style={styles.metaPillAccent} title="Troféus">
           🏆 {profile.trophiesWon}
         </span>
+        <span style={{
+          ...styles.metaPill,
+          background: profile.managerReputation >= 70 ? "rgba(16,185,129,0.15)" : profile.managerReputation >= 40 ? "rgba(59,130,246,0.15)" : "rgba(239,68,68,0.15)",
+          color: profile.managerReputation >= 70 ? "#10b981" : profile.managerReputation >= 40 ? "#3b82f6" : "#ef4444",
+        }} title="Reputação do Manager">
+          ⭐ {profile.managerReputation}
+        </span>
       </div>
     </div>
   );

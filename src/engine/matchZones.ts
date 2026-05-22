@@ -45,12 +45,19 @@ export function calcEffectiveCA(
   const base = player.currentAbility;
   const fitnessPenalty = player.fitness < 75 ? 0.85 : 1.0;
   const fitnessFactor = (0.7 + (player.fitness / 100) * 0.3) * fitnessPenalty;
-  const moraleFactor = 0.8 + (player.morale / 100) * 0.3;
+  // Moral impact increased: low morale = big penalty
+  const moraleFactor = player.morale < 30
+    ? 0.55 + (player.morale / 100) * 0.35
+    : 0.75 + (player.morale / 100) * 0.35;
+  // Happiness affects consistency
+  const happinessFactor = player.happiness < 30
+    ? 0.7 + (player.happiness / 100) * 0.3
+    : 0.85 + (player.happiness / 100) * 0.2;
   const formFactor = 0.85 + ((player.form ?? 50) / 100) * 0.3;
   const footFactor = getFootFactor(player.preferredFoot ?? "right", zone);
   const personalityFactor = getPersonalityFactor(player.personality ?? "professional", minute, scoreDiff);
 
-  const raw = base * fitnessFactor * moraleFactor * formFactor * footFactor * personalityFactor;
+  const raw = base * fitnessFactor * moraleFactor * happinessFactor * formFactor * footFactor * personalityFactor;
   const floor = base * 0.45;
   return Math.max(floor, Math.min(99, raw));
 }
@@ -196,4 +203,36 @@ function mirrorDefenseZone(atkZone: FieldZone): FieldZone {
     case "ATK_RIGHT": return "DEF_LEFT";
     default: return "DEF_CENTER";
   }
+}
+
+export function calculateTeamChemistry(players: Player[]): number {
+  if (players.length === 0) return 50;
+  
+  // Base: average happiness of starting 11
+  const avgHappiness = players.reduce((s, p) => s + (p.happiness ?? 50), 0) / players.length;
+  
+  // Modifiers
+  let modifier = 0;
+  
+  // Leader bonus
+  const hasLeader = players.some(p => p.personality === "leader");
+  if (hasLeader) modifier += 10;
+  
+  // Temperamental penalty
+  const hasTemperamental = players.some(p => p.personality === "temperamental");
+  if (hasTemperamental) modifier -= 10;
+  
+  // Salary inequality penalty
+  const wages = players.map(p => p.wage).sort((a, b) => b - a);
+  const avgWage = wages.reduce((s, w) => s + w, 0) / wages.length;
+  if (wages[0] > avgWage * 3 || wages[1] > avgWage * 3 || wages[2] > avgWage * 3) {
+    modifier -= 15;
+  }
+  
+  // Recent form streak (simplified: check last 3 matches via form as proxy)
+  const avgForm = players.reduce((s, p) => s + (p.form ?? 50), 0) / players.length;
+  if (avgForm >= 70) modifier += 5;
+  else if (avgForm <= 30) modifier -= 5;
+  
+  return Math.max(0, Math.min(100, avgHappiness + modifier));
 }

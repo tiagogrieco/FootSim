@@ -22,6 +22,7 @@ export default function TransferView() {
     transferMarket, incomingOffers, budget, playerSquad,
     makeOffer, respondToOffer,
     listedForSale, listForSale, unlistForSale,
+    isTransferBlocked,
   } = useGame();
 
   const [tab, setTab] = useState<Tab>("market");
@@ -54,6 +55,7 @@ export default function TransferView() {
   const resolved = incomingOffers.filter(o => o.status !== "pending");
 
   const handleBuy = (idx: number) => {
+    if (isTransferBlocked) { showToast(false, "🔒 Contratações bloqueadas pela diretoria!"); return; }
     const listing = filtered[idx];
     if (!listing) return;
 

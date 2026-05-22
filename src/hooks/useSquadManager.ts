@@ -19,6 +19,14 @@ function rand(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function generateContractExpiry(years: number): string {
+  const now = new Date();
+  now.setFullYear(now.getFullYear() + years);
+  now.setMonth(rand(0, 11));
+  now.setDate(rand(1, 28));
+  return now.toISOString().split("T")[0];
+}
+
 export function useSquadManager() {
   const [allSquads, setAllSquads] = useState<Map<number, Player[]>>(new Map());
   const [playerSquad, setPlayerSquad] = useState<Player[]>([]);
@@ -64,6 +72,8 @@ export function useSquadManager() {
           seasonStats: p.seasonStats || createEmptyStats(),
           form: p.form ?? 50,
           happiness: p.happiness ?? 50,
+          contractYears: p.contractYears ?? rand(1, 4),
+          contractExpiry: p.contractExpiry ?? generateContractExpiry(rand(1, 4)),
         }));
       } else {
         const realSquad = realSquads[String(clubId)] as Player[] | undefined;
@@ -74,6 +84,8 @@ export function useSquadManager() {
             seasonStats: p.seasonStats || createEmptyStats(),
             form: p.form ?? 50,
             happiness: p.happiness ?? 50,
+            contractYears: p.contractYears ?? rand(1, 4),
+            contractExpiry: p.contractExpiry ?? generateContractExpiry(rand(1, 4)),
           }));
         } else {
           squadForClub = generateSquadForClub(club);
@@ -120,12 +132,22 @@ export function useSquadManager() {
       newSquads.set(clubId, squad.map(p => {
         const isPlayerClub = clubId === playerClubId;
         const fitnessGain = isPlayerClub ? Math.round((2 + rand(2, 4)) * recoveryMult) : rand(2, 4);
+        let morale = p.morale ?? 50;
+        // Long injury recovery (>21 days): -10 morale when healed
+        if (p.injuryDays === 1 && isPlayerClub) {
+          // Approximate: if player was injured for a while, penalize
+          // We track this via a flag or approximate by checking if fitness is very low
+          if (p.fitness < 50) {
+            morale = Math.max(0, morale - 10);
+          }
+        }
         return {
           ...p,
           fitness: Math.min(100, p.fitness + fitnessGain),
           injuryDays: (p.injuryDays && p.injuryDays > 1) ? p.injuryDays - 1 : undefined,
           suspensionDays: (p.suspensionDays && p.suspensionDays > 1) ? p.suspensionDays - 1 : undefined,
           strikeDays: (p.strikeDays && p.strikeDays > 1) ? p.strikeDays - 1 : undefined,
+          morale,
         };
       }));
     }
@@ -139,6 +161,85 @@ export function useSquadManager() {
     if (updatedPlayerSquad) setPlayerSquad(updatedPlayerSquad);
     return newSquads;
   }, [applyDailyRecovery]);
+
+  const applyMonthlyMorale = useCallback((currentSquads: Map<number, Player[]>, playerClubId: number) => {
+    const newSquads = new Map<number, Player[]>(currentSquads);
+    const squad = newSquads.get(playerClubId);
+    if (!squad) return { squads: newSquads, messages: [] as import("../types/game").InboxMessage[] };
+    
+    const avgWage = squad.reduce((s, p) => s + p.wage, 0) / squad.length;
+    const messages: import("../types/game").InboxMessage[] = [];
+    
+    newSquads.set(playerClubId, squad.map(p => {
+      let morale = p.morale ?? 50;
+      let happiness = p.happiness ?? 50;
+      
+      // Underpaid players lose morale
+      if (p.wage < avgWage * 0.7) {
+        morale = Math.max(0, morale - 5);
+        happiness = Math.max(0, happiness - 3);
+      }
+      
+      // High earners feel valued
+      if (p.wage > avgWage * 1.5) {
+        morale = Math.min(100, morale + 2);
+      }
+      
+      return { ...p, morale, happiness };
+    }));
+    
+    // Check for unhappy players wanting to leave
+    const unhappyPlayers = squad.filter(p => (p.happiness ?? 50) < 20 && !p.playtimePromiseMatches);
+    for (const p of unhappyPlayers) {
+      messages.push({
+        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        sender: p.name,
+        subject: "🚪 Quero sair do clube",
+        body: `Treinador,\n\nNão estou satisfeito com a minha situação aqui. Preciso de mais oportunidades ou vou pedir para sair.\n\n${p.name}`,
+        date: new Date().toISOString().split("T")[0],
+        type: "player",
+        read: false,
+        actionRequired: true,
+        actionOptions: [
+          { id: "sell", text: "Vender jogador", replyText: "Vamos encontrar um clube para você.", effects: {} },
+          { id: "promise", text: "Prometer 3 jogos titular", replyText: "Você será titular nos próximos 3 jogos.", effects: { playtimePromise: { matches: 3, playerId: p.id } } },
+          { id: "reject", text: "Recusar pedido", replyText: "Você é importante para o elenco. Fique.", effects: { playerMoraleChange: { playerId: p.id, change: -30 } } },
+        ],
+      });
+    }
+    
+    // Check for contracts expiring in < 6 months
+    const now = new Date();
+    const sixMonthsFromNow = new Date(now);
+    sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
+    const expiringPlayers = squad.filter(p => {
+      if (!p.contractExpiry) return false;
+      const expiry = new Date(p.contractExpiry);
+      return expiry <= sixMonthsFromNow && expiry > now;
+    });
+    for (const p of expiringPlayers) {
+      messages.push({
+        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        sender: "Departamento Jurídico",
+        subject: `📄 Contrato de ${p.name} expirando`,
+        body: `Treinador,\n\nO contrato de ${p.name} expira em ${p.contractExpiry}. Precisamos decidir:\n\n- Renovar (aumento salarial provável)\n- Vender antes de perder de graça\n- Deixar sair no fim do contrato\n\nDepartamento Jurídico`,
+        date: new Date().toISOString().split("T")[0],
+        type: "system",
+        read: false,
+        actionRequired: true,
+        actionOptions: [
+          { id: "renew", text: `Renovar contrato (+${Math.round(p.wage * 0.3)} salário)`, replyText: "Vamos renovar seu contrato.", effects: { wageIncrease: { newWage: Math.round(p.wage * 1.3), playerId: p.id } } },
+          { id: "sell", text: "Colocar à venda", replyText: "Vamos negociar sua saída.", effects: { playerHappinessChange: { playerId: p.id, change: -10 } } },
+          { id: "let_go", text: "Deixar sair de graça", replyText: "Seu contrato não será renovado.", effects: { playerHappinessChange: { playerId: p.id, change: -20 }, playerMoraleChange: { playerId: p.id, change: -15 } } },
+        ],
+      });
+    }
+    
+    setAllSquads(newSquads);
+    const updatedPlayerSquad = newSquads.get(playerClubId);
+    if (updatedPlayerSquad) setPlayerSquad(updatedPlayerSquad);
+    return { squads: newSquads, messages };
+  }, []);
 
   const simulatePlayerMatch = useCallback((result: {
     allSquads: Map<number, Player[]>;
@@ -294,6 +395,7 @@ export function useSquadManager() {
     fireStaff,
     startNewSeason,
     advanceMonth,
+    applyMonthlyMorale,
     applyLoadedState,
     setTrainingHistory,
   };

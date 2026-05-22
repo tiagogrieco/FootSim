@@ -15,6 +15,7 @@ import {
   rollDailyChallenges,
   levelFromXP,
   XP_REWARDS,
+  adjustManagerReputation,
 } from "../engine/metaEngine";
 
 const STORAGE_KEY = "footsim_meta_v1";
@@ -224,11 +225,11 @@ export function MetaProvider({ children }: { children: ReactNode }) {
 
   const trackTrophy = useCallback(() => {
     setState(prev => {
-      const profile = {
+      const profile = adjustManagerReputation({
         ...prev.profile,
         trophiesWon: prev.profile.trophiesWon + 1,
         xp: prev.profile.xp + XP_REWARDS.trophy,
-      };
+      }, "title");
       const date = new Date().toISOString().split("T")[0];
       const trophyNews: NewsItem = {
         id: `trophy-${Date.now()}`, date, read: false, tone: "big", icon: "🏆",

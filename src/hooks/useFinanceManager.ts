@@ -14,12 +14,16 @@ export function useFinanceManager() {
   const [budget, setBudget] = useState(0);
   const [financialLedger, setFinancialLedger] = useState<FinancialRecord[]>([]);
   const [debt, setDebt] = useState<number>(0);
+  const [financialCrises, setFinancialCrises] = useState(0);
+  const [isTransferBlocked, setIsTransferBlocked] = useState(false);
 
   const startNewGame = useCallback((initialClub: Club, roadToGlory?: boolean) => {
     const initialBudget = roadToGlory ? 50000 : initialClub.budget;
     setBudget(initialBudget);
     setDebt(0);
     setFinancialLedger([]);
+    setFinancialCrises(0);
+    setIsTransferBlocked(false);
     return initialBudget;
   }, []);
 
@@ -61,7 +65,8 @@ export function useFinanceManager() {
     currentBudget: number,
     currentDate: string,
     season: number,
-    currentDebt: number
+    currentDebt: number,
+    currentCrises: number
   ) => {
     const sponsorRev = calculateSponsorRevenue(playerClub);
     const monthlyExpenses = calculateMonthlyExpenses(playerClub);
@@ -79,9 +84,30 @@ export function useFinanceManager() {
     let nextBudget = currentBudget + netMonth;
 
     let newLoans = 0;
-    while (nextBudget < 0) {
-      nextBudget += 100000;
-      newLoans += 100000;
+    let nextCrises = currentCrises;
+    let shouldBlockTransfers = false;
+    let shouldSack = false;
+
+    if (nextBudget < 0) {
+      nextCrises = currentCrises + 1;
+      if (nextCrises === 1) {
+        // 1st crisis: emergency loan
+        newLoans = 500000;
+        nextBudget += newLoans;
+      } else if (nextCrises === 2) {
+        // 2nd crisis: loan + block transfers
+        newLoans = 500000;
+        nextBudget += newLoans;
+        shouldBlockTransfers = true;
+      } else {
+        // 3rd crisis: automatic sacking
+        shouldSack = true;
+        newLoans = 500000;
+        nextBudget += newLoans;
+      }
+    } else if (nextBudget > 0 && currentCrises > 0) {
+      // Reset crisis counter if budget is positive again
+      nextCrises = 0;
     }
 
     const entries: FinancialRecord[] = [
@@ -151,11 +177,17 @@ export function useFinanceManager() {
 
     let loanMessage: InboxMessage | null = null;
     if (newLoans > 0) {
+      const crisisLabel = nextCrises === 1 ? "1ª Crise Financeira" : nextCrises === 2 ? "2ª Crise Financeira" : "⚠️ DEMISSÃO IMINENTE";
+      const extraText = nextCrises === 2 
+        ? "\n\n🔒 CONTRATAÇÕES BLOQUEADAS até a dívida ser reduzida abaixo de R$ 200.000."
+        : nextCrises >= 3
+        ? "\n\n🚨 A diretoria decidiu pela sua DEMISSÃO automática devido à gestão financeira desastrosa."
+        : "";
       loanMessage = {
         id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         sender: "Diretoria (Financeiro)",
-        subject: "⚠️ Empréstimo Emergencial Contraído",
-        body: `Prezado treinador,\n\nDevido a um saldo de caixa negativo na virada do mês, contraímos um empréstimo bancário automático de ${formatCurrency(newLoans)} para cobrir o fluxo de caixa.\n\nEste empréstimo possui amortização mensal de R$ 10.000 + 1.5% de juros sobre o saldo devedor restante.\n\nPor favor, planeje melhor nossos gastos.\n\nAtenciosamente,\nDepartamento Financeiro do ${playerClub.name}`,
+        subject: `⚠️ ${crisisLabel}`,
+        body: `Prezado treinador,\n\nDevido a um saldo de caixa negativo na virada do mês, contraímos um empréstimo bancário automático de ${formatCurrency(newLoans)} para cobrir o fluxo de caixa.\n\nEste empréstimo possui amortização mensal de R$ 10.000 + 3% de juros sobre o saldo devedor restante.${extraText}\n\nPor favor, planeje melhor nossos gastos.\n\nAtenciosamente,\nDepartamento Financeiro do ${playerClub.name}`,
         date: currentDate,
         type: "board",
         read: false,
@@ -168,6 +200,9 @@ export function useFinanceManager() {
       entries,
       loanMessage,
       newLoans,
+      nextCrises,
+      shouldBlockTransfers,
+      shouldSack,
     };
   }, []);
 
@@ -194,6 +229,8 @@ export function useFinanceManager() {
     setBudget(data.budget);
     setFinancialLedger(data.financialLedger || []);
     setDebt(data.debt ?? 0);
+    setFinancialCrises(0);
+    setIsTransferBlocked(false);
   }, []);
 
   return {
@@ -203,6 +240,10 @@ export function useFinanceManager() {
     setFinancialLedger,
     debt,
     setDebt,
+    financialCrises,
+    setFinancialCrises,
+    isTransferBlocked,
+    setIsTransferBlocked,
     startNewGame,
     advanceDay,
     simulatePlayerMatch,

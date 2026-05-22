@@ -17,11 +17,14 @@ import {
   type SaveSlotInfo,
 } from "../engine/saveEngine";
 import { generateYouthPlayers } from "../engine/playerGenerator";
-import { generateSponsor } from "../engine/financeEngine";
+import { generateSponsor, updateFanSatisfaction } from "../engine/financeEngine";
+import { generateJobOffers } from "../engine/careerEngine";
+import type { JobOffer } from "../types/career";
 import { simulateMatchDay } from "../engine/matchDayEngine";
 // getTotalRounds moved to useMatchManager
 import { addXP } from "../engine/rpgEngine";
 import { useBoard } from "./BoardContext";
+import { useMeta } from "./MetaContext";
 import { useToast } from "../hooks/useToast";
 import clubsData from "../data/clubs.json";
 
@@ -67,6 +70,8 @@ interface GameContextType {
   debt: number;
   setDebt: (debt: number) => void;
   payOffDebt: (amount: number) => void;
+  financialCrises: number;
+  isTransferBlocked: boolean;
 
   // Staff
   staff: StaffMember[];
@@ -81,6 +86,7 @@ interface GameContextType {
 
   // Save/Load
   gameStarted: boolean;
+  isSacked: boolean;
   lastSaveTime: string | null;
   saveGame: (slot: number, name?: string) => Promise<boolean>;
   loadGame: (slot: number) => Promise<boolean>;
@@ -114,6 +120,8 @@ interface GameContextType {
   // Season
   seasonEndResult: import("../engine/seasonEngine").SeasonEndResult | null;
   startNewSeason: () => void;
+  jobOffers: JobOffer[];
+  acceptJobOffer: (offer: JobOffer) => void;
   updateStartingLineup: (newLineupIds: number[]) => void;
   updateTactics: (formation: string, mentality: "defensive" | "balanced" | "attacking") => void;
 
@@ -145,6 +153,7 @@ interface GameContextType {
   markMessageRead: (messageId: string) => void;
   replyToMessage: (messageId: string, optionId: string) => void;
   generatePlayerScoutReport: (playerId: number) => Promise<string | null>;
+  awardObjectiveReward: (objective: import("../types/board").BoardObjective) => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -156,13 +165,15 @@ export function useGame(): GameContextType {
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const { confidence, adjustBoardConfidence } = useBoard();
+  const { confidence, adjustBoardConfidence, resetBoard, isSacked } = useBoard();
+  const { resetMeta, profile: metaProfile } = useMeta();
   const { push: pushToast } = useToast();
   const [playerClub, setPlayerClub] = useState<Club>(clubsData[0] as Club);
   const [allClubs, setAllClubs] = useState<Club[]>(clubsData as Club[]);
   const [gameStarted, setGameStarted] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState<string | null>(null);
   const [sponsorOffers, setSponsorOffers] = useState<Sponsor[]>([]);
+  const [jobOffers, setJobOffers] = useState<JobOffer[]>([]);
   const [forceSaveFlag, setForceSaveFlag] = useState(0);
 
   const squadManager = useSquadManager();
@@ -174,6 +185,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Transfer window: open during rounds 0-5 and 17-22
   const isTransferWindowOpen = matchManager.currentRound <= 5 || (matchManager.currentRound >= 17 && matchManager.currentRound <= 22);
+  
+  // Sacking guard: prevent actions when sacked
+  const sackedRef = useRef(isSacked);
+  useEffect(() => { sackedRef.current = isSacked; }, [isSacked]);
 
   // Auto-save counter
   const actionCountRef = useRef(0);
@@ -424,7 +439,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           .map(p => p.id);
       }
     }
-    setPlayerClub(initialClub);
+    const initialFanSatisfaction = Math.min(85, 40 + Math.round((initialClub.reputation ?? 5000) / 200));
+    setPlayerClub({ ...initialClub, fanSatisfaction: initialFanSatisfaction });
 
     const { standings: leagueStandings, fixtures: leagueFixtures } = matchManager.startNewGame(freshClubs, 2026, "2026-03-01");
 
@@ -435,6 +451,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     inboxManager.setPendingEvent(null);
     inboxManager.clearNotification();
     setSponsorOffers([]);
+    setJobOffers([]);
+    resetMeta();
+    resetBoard();
     setGameStarted(true);
     pushToast({ title: "Novo jogo iniciado!", message: `Você assumiu o comando do ${initialClub.name}. Boa sorte, treinador!`, type: "success" });
 
@@ -461,7 +480,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
       autoSave(data);
     }, 500);
-  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast]);
+  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast, resetMeta, resetBoard]);
 
   const advanceDay = useCallback(() => {
     const oldMonth = new Date(seasonManager.currentDate).getMonth();
@@ -760,6 +779,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         financeManager.setFinancialLedger(prev => [...prev, financeResult.entry!]);
       }
 
+      // Update fan satisfaction
+      const newFanSatisfaction = updateFanSatisfaction(playerClub.fanSatisfaction ?? 50, result.playerMatch, playerClub.id);
+      setPlayerClub(prev => ({ ...prev, fanSatisfaction: newFanSatisfaction }));
+
       // Track active board objective
       const boardResult = seasonManager.checkBoardObjective(seasonManager.activeBoardObjective, result.playerMatch, playerClub);
       if (boardResult.newObjective !== undefined) {
@@ -778,6 +801,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const endResult = matchManager.checkSeasonEnd(result, allClubs, playerClub, seasonManager.season);
       if (endResult) {
         matchManager.setSeasonEndResult(endResult);
+        // Generate job offers based on season performance
+        const isRelegated = endResult.relegated;
+        const position = endResult.finalPosition;
+        const offers = generateJobOffers(metaProfile.managerReputation, allClubs, playerClub.id, position, isRelegated);
+        setJobOffers(offers);
       }
     }
 
@@ -795,15 +823,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [
     seasonManager, matchManager, squadManager, financeManager, inboxManager,
-    playerClub, allClubs, triggerAutoSave, pushToast,
+    playerClub, allClubs, triggerAutoSave, pushToast, metaProfile,
   ]);
 
   const setTrainingFocus = useCallback((focus: import("../engine/trainingEngine").TrainingFocus) => {
     squadManager.setTrainingFocus(focus);
   }, [squadManager]);
 
+  const acceptJobOffer = useCallback((offer: JobOffer) => {
+    // Start new game with the offered club
+    startNewGame(offer.club.id);
+    setJobOffers([]);
+  }, [startNewGame]);
+
   const startNewSeason = useCallback(() => {
     if (!matchManager.seasonEndResult) return;
+    setJobOffers([]);
 
     financeManager.setBudget(prev => prev + matchManager.seasonEndResult!.totalBonus);
 
@@ -837,12 +872,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
       squadManager.allSquads, allClubs, playerClub.id, playerClub,
       squadManager.trainingFocus, seasonManager.season, seasonManager.currentDate
     );
+    
+    // Apply monthly morale adjustments (salary comparisons, etc)
+    const moraleResult = squadManager.applyMonthlyMorale(squadManager.allSquads, playerClub.id);
+    for (const msg of moraleResult.messages) {
+      inboxManager.setInbox(prev => [msg, ...prev]);
+    }
 
     // Financial: monthly sponsor revenue and expenses
-    const monthResult = financeManager.advanceMonth(playerClub, financeManager.budget, seasonManager.currentDate, seasonManager.season, financeManager.debt);
+    const monthResult = financeManager.advanceMonth(playerClub, financeManager.budget, seasonManager.currentDate, seasonManager.season, financeManager.debt, financeManager.financialCrises);
     financeManager.setBudget(monthResult.nextBudget);
     financeManager.setDebt(monthResult.nextDebt);
     financeManager.setFinancialLedger(prev => [...prev, ...monthResult.entries]);
+    financeManager.setFinancialCrises(monthResult.nextCrises);
+    if (monthResult.shouldBlockTransfers) {
+      financeManager.setIsTransferBlocked(true);
+    }
+    if (monthResult.shouldSack) {
+      queueMicrotask(() => {
+        pushToast({ title: "🚨 DEMISSÃO", message: "Você foi demitido por gestão financeira desastrosa!", type: "error" });
+      });
+      // Sacking is handled by BoardContext, but financial sacking bypasses confidence
+      // We need to force sacking state
+      // This will be handled by the sacking overlay
+    }
 
     if (monthResult.loanMessage) {
       inboxManager.setInbox(prev => [monthResult.loanMessage!, ...prev]);
@@ -917,7 +970,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     triggerAutoSave();
   }, [
     squadManager, financeManager, inboxManager, playerClub, allClubs,
-    seasonManager, triggerAutoSave,
+    seasonManager, triggerAutoSave, pushToast,
   ]);
 
   const upgradeInfrastructure = useCallback((): boolean => {
@@ -1426,8 +1479,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const payOffDebt = useCallback((amount: number) => {
     financeManager.payOffDebt(amount, financeManager.budget, financeManager.debt, seasonManager.currentDate, seasonManager.season);
+    // Unblock transfers if debt falls below 200k
+    if (financeManager.debt - amount < 200000) {
+      financeManager.setIsTransferBlocked(false);
+    }
     setForceSaveFlag(prev => prev + 1);
   }, [financeManager, seasonManager]);
+
+  const awardObjectiveReward = useCallback((objective: import("../types/board").BoardObjective) => {
+    financeManager.setBudget(prev => prev + objective.reward);
+    financeManager.setFinancialLedger(prev => [...prev, {
+      month: new Date(seasonManager.currentDate).getMonth() + 1,
+      season: seasonManager.season,
+      type: "income",
+      category: "prize",
+      description: `Bônus por objetivo: ${objective.description}`,
+      amount: objective.reward,
+    }]);
+    pushToast({
+      title: "🏆 Objetivo Alcançado!",
+      message: `${objective.description} — R$ ${(objective.reward / 1_000_000).toFixed(1)}M + ${objective.xpReward} XP`,
+      type: "success",
+    });
+    triggerAutoSave();
+  }, [financeManager, seasonManager, pushToast, triggerAutoSave]);
 
   const advanceCupAfterMatch = useCallback(() => {
     matchManager.advanceCup();
@@ -1452,6 +1527,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       incomingOffers: transferManager.incomingOffers,
       budget: financeManager.budget,
       gameStarted,
+      isSacked,
       lastSaveTime,
       saveGame,
       loadGame: loadGameFromSlot,
@@ -1471,6 +1547,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       updateTactics,
       seasonEndResult: matchManager.seasonEndResult,
       startNewSeason,
+      jobOffers,
+      acceptJobOffer,
       lastTrainingReport: squadManager.lastTrainingReport,
       trainingHistory: squadManager.trainingHistory,
       injuries: squadManager.injuries,
@@ -1508,6 +1586,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       debt: financeManager.debt,
       setDebt: financeManager.setDebt,
       payOffDebt,
+      awardObjectiveReward,
+      financialCrises: financeManager.financialCrises,
+      isTransferBlocked: financeManager.isTransferBlocked,
     }}>
       {children}
     </GameContext.Provider>

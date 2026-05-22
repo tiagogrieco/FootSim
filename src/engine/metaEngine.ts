@@ -191,6 +191,7 @@ export function applyMatchToProfile(
     unbeatenRun: lost ? 0 : profile.unbeatenRun + 1,
     matchHatTricks: profile.matchHatTricks + (hatTrick ? 1 : 0),
     biggestWinMargin: won ? Math.max(profile.biggestWinMargin, my - op) : profile.biggestWinMargin,
+    managerReputation: Math.max(0, Math.min(100, profile.managerReputation + (won ? 1 : lost ? -1 : 0))),
   };
 
   return { profile: next, xpEarned: xp, goalsScored: my, goalsConceded: op, hatTrick, win: won, cleanSheet };
@@ -301,5 +302,25 @@ export function newsForAchievement(name: string, icon: string, date: string): Ne
   return {
     id: nid("ach"), date, read: false, tone: "good", icon,
     headline: `Conquista desbloqueada: ${name}`,
+  };
+}
+
+export function adjustManagerReputation(
+  profile: ManagerProfile,
+  reason: "title" | "top4" | "relegation" | "sacking" | "promotion" | "custom",
+  customDelta?: number
+): ManagerProfile {
+  const deltas: Record<string, number> = {
+    title: 5,
+    top4: 3,
+    relegation: -2,
+    sacking: -2,
+    promotion: 4,
+    custom: customDelta ?? 0,
+  };
+  const delta = deltas[reason] ?? 0;
+  return {
+    ...profile,
+    managerReputation: Math.max(0, Math.min(100, profile.managerReputation + delta)),
   };
 }

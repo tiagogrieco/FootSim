@@ -1,13 +1,16 @@
 import type { SeasonEndResult } from "../engine/seasonEngine";
 import { formatCurrency } from "../engine/financeEngine";
+import type { JobOffer } from "../types/career";
 
 interface SeasonEndModalProps {
   result: SeasonEndResult;
   season: number;
   onContinue: () => void;
+  jobOffers?: JobOffer[];
+  onAcceptJob?: (offer: JobOffer) => void;
 }
 
-export default function SeasonEndModal({ result, season, onContinue }: SeasonEndModalProps) {
+export default function SeasonEndModal({ result, season, onContinue, jobOffers, onAcceptJob }: SeasonEndModalProps) {
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
@@ -55,6 +58,55 @@ export default function SeasonEndModal({ result, season, onContinue }: SeasonEnd
             </span>
           </div>
         </div>
+
+        {/* Job Offers */}
+        {jobOffers && jobOffers.length > 0 && (
+          <div style={{ marginTop: 20, marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, color: "#fbbf24" }}>
+              💼 Propostas de Emprego
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {jobOffers.map((offer, i) => (
+                <div key={i} style={{ 
+                  background: "rgba(251,191,36,0.08)", 
+                  border: "1px solid rgba(251,191,36,0.3)",
+                  borderRadius: 10,
+                  padding: 14,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <span style={{ fontSize: 24 }}>🏟️</span>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800 }}>{offer.club.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                        Reputação: {offer.club.reputation} | Orçamento: {formatCurrency(offer.offeredBudget)}
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 10, lineHeight: 1.5 }}>
+                    {offer.description}
+                  </p>
+                  {onAcceptJob && (
+                    <button
+                      onClick={() => onAcceptJob(offer)}
+                      style={{
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                        border: "none",
+                        borderRadius: 8,
+                        color: "#fff",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✨ Aceitar Proposta
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Info */}
         <div style={styles.infoBox}>

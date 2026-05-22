@@ -4,7 +4,7 @@ import { useGame } from "../context/GameContext";
 import { useBoard } from "../context/BoardContext";
 
 export default function BoardBridge() {
-  const { playerClub, season, lastMatchResult, standings } = useGame();
+  const { playerClub, season, lastMatchResult, standings, awardObjectiveReward } = useGame();
   const { ensureSeasonObjectives, trackMatch, updateStandingPosition } = useBoard();
   const lastMatch = useRef<typeof lastMatchResult>(null);
 
@@ -18,8 +18,11 @@ export default function BoardBridge() {
     if (!lastMatchResult) return;
     if (lastMatch.current === lastMatchResult) return;
     lastMatch.current = lastMatchResult;
-    trackMatch(lastMatchResult, playerClub.id, playerClub.difficulty);
-  }, [lastMatchResult, playerClub.id, playerClub.difficulty, trackMatch]);
+    const newlyAchieved = trackMatch(lastMatchResult, playerClub.id, playerClub.difficulty);
+    for (const objective of newlyAchieved) {
+      awardObjectiveReward(objective);
+    }
+  }, [lastMatchResult, playerClub.id, playerClub.difficulty, trackMatch, awardObjectiveReward]);
 
   // Track league position for objectives
   useEffect(() => {

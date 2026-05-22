@@ -169,6 +169,7 @@ export function adjustConfidence(
     label: confidenceLabel(newVal),
     trend,
     history: [...current.history.slice(-15), { date, delta, reason }],
+    sackingRounds: current.sackingRounds,
   };
 }
 

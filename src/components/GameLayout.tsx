@@ -47,7 +47,7 @@ export default function GameLayout() {
     playerClub, currentDate, currentRound, season, standings, budget,
     saveGame, loadGame, deleteSave, getSaveSlots, lastSaveTime,
     seasonEndResult, startNewSeason, allClubs, fixtures,
-    inbox = [],
+    inbox = [], jobOffers, acceptJobOffer,
   } = useGame();
   const { t, language, setLanguage } = useTranslation();
   const navigate = useNavigate();
@@ -181,11 +181,55 @@ export default function GameLayout() {
         <SeasonEndModal
           result={seasonEndResult}
           season={season}
+          jobOffers={jobOffers}
+          onAcceptJob={acceptJobOffer}
           onContinue={() => {
             startNewSeason();
             navigate("/game");
           }}
         />
+      )}
+
+      {/* Sacking / Game Over Screen */}
+      {board.isSacked && (
+        <div style={styles.sackingOverlay}>
+          <div style={styles.sackingCard}>
+            <div style={styles.sackingIcon}>👔❌</div>
+            <h1 style={styles.sackingTitle}>VOCÊ FOI DEMITIDO</h1>
+            <p style={styles.sackingSubtitle}>
+              A diretoria do <strong>{playerClub.name}</strong> perdeu a confiança no seu trabalho.
+            </p>
+            <div style={styles.sackingStats}>
+              <div style={styles.sackingStat}>
+                <span style={styles.sackingStatValue}>{season}</span>
+                <span style={styles.sackingStatLabel}>Temporadas</span>
+              </div>
+              <div style={styles.sackingStat}>
+                <span style={styles.sackingStatValue}>{myStanding?.points ?? 0}</span>
+                <span style={styles.sackingStatLabel}>Pontos</span>
+              </div>
+              <div style={styles.sackingStat}>
+                <span style={styles.sackingStatValue}>{myPosition > 0 ? `${myPosition}º` : "—"}</span>
+                <span style={styles.sackingStatLabel}>Posição</span>
+              </div>
+            </div>
+            <p style={styles.sackingMessage}>
+              {myPosition <= 4 
+                ? "Você deixou o clube em uma posição de destaque. Outros clubes podem se interessar."
+                : myPosition >= 16
+                ? "O rebaixamento selou o seu destino. É hora de recomeçar."
+                : "Os resultados não foram suficientes para manter o cargo."}
+            </p>
+            <button
+              style={styles.sackingBtn}
+              onClick={() => {
+                navigate("/select-team");
+              }}
+            >
+              🔄 Iniciar Nova Carreira
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Sidebar */}
@@ -748,5 +792,90 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: "8px",
     border: "1px solid var(--color-border)",
     gap: "10px",
+  },
+  sackingOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.92)",
+    backdropFilter: "blur(12px)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2000,
+  },
+  sackingCard: {
+    background: "linear-gradient(180deg, #1a0a0a 0%, #0d0d0d 100%)",
+    border: "1px solid rgba(239,68,68,0.4)",
+    borderRadius: "20px",
+    padding: "48px",
+    width: "520px",
+    maxWidth: "90vw",
+    textAlign: "center" as const,
+    boxShadow: "0 0 60px rgba(239,68,68,0.2), 0 20px 60px rgba(0,0,0,0.8)",
+  },
+  sackingIcon: {
+    fontSize: "56px",
+    marginBottom: "20px",
+  },
+  sackingTitle: {
+    fontSize: "32px",
+    fontWeight: 900,
+    color: "#ef4444",
+    marginBottom: "12px",
+    letterSpacing: "2px",
+    textTransform: "uppercase" as const,
+  },
+  sackingSubtitle: {
+    fontSize: "15px",
+    color: "var(--color-text-secondary)",
+    marginBottom: "32px",
+    lineHeight: 1.6,
+  },
+  sackingStats: {
+    display: "flex",
+    justifyContent: "center",
+    gap: "32px",
+    marginBottom: "32px",
+    padding: "20px",
+    background: "rgba(239,68,68,0.06)",
+    borderRadius: "12px",
+    border: "1px solid rgba(239,68,68,0.15)",
+  },
+  sackingStat: {
+    display: "flex",
+    flexDirection: "column" as const,
+    alignItems: "center",
+    gap: "4px",
+  },
+  sackingStatValue: {
+    fontSize: "24px",
+    fontWeight: 800,
+    color: "#fff",
+  },
+  sackingStatLabel: {
+    fontSize: "11px",
+    color: "var(--color-text-muted)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "1px",
+  },
+  sackingMessage: {
+    fontSize: "14px",
+    color: "var(--color-text-secondary)",
+    marginBottom: "32px",
+    lineHeight: 1.6,
+    fontStyle: "italic",
+  },
+  sackingBtn: {
+    padding: "14px 32px",
+    background: "linear-gradient(135deg, #ef4444, #dc2626)",
+    border: "none",
+    borderRadius: "10px",
+    color: "#fff",
+    fontSize: "15px",
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    fontFamily: "var(--font-sans)",
+    boxShadow: "0 4px 16px rgba(239,68,68,0.3)",
   },
 };

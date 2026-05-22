@@ -8,6 +8,14 @@ import { autoBuildLineup } from "../engine/autoLineupEngine";
 import { useBoard } from "../context/BoardContext";
 import OnboardingTutorial from "../components/OnboardingTutorial";
 
+function getFanColor(v: number): string {
+  if (v >= 80) return "#10b981";
+  if (v >= 60) return "#3b82f6";
+  if (v >= 40) return "#f59e0b";
+  if (v >= 20) return "#ef4444";
+  return "#7f1d1d";
+}
+
 export default function Dashboard() {
   const {
     playerClub, playerSquad, standings, currentRound, lastMatchResult,
@@ -289,6 +297,10 @@ export default function Dashboard() {
             <div className="stat-highlight">
               <span className="stat-highlight-value" style={{ fontSize: "14px", color: budget >= 0 ? "#10b981" : "#ef4444" }}>{formatCurrency(budget)}</span>
               <span className="stat-highlight-label">Saldo</span>
+            </div>
+            <div className="stat-highlight">
+              <span className="stat-highlight-value" style={{ color: getFanColor(playerClub.fanSatisfaction ?? 50) }}>{playerClub.fanSatisfaction ?? 50}%</span>
+              <span className="stat-highlight-label">Torcida</span>
             </div>
             <div className="stat-highlight">
               <span className="stat-highlight-value" style={{ color: "var(--color-accent-secondary)" }}>{roundsRemaining}</span>

@@ -71,6 +71,7 @@ export interface ManagerProfile {
   highestPosition: number;
   careerStarted: string;
   challengesCompleted: number;
+  managerReputation: number; // 0-100
 }
 
 export const EMPTY_PROFILE: ManagerProfile = {
@@ -93,4 +94,5 @@ export const EMPTY_PROFILE: ManagerProfile = {
   highestPosition: 99,
   careerStarted: new Date().toISOString(),
   challengesCompleted: 0,
+  managerReputation: 20,
 };

@@ -37,9 +37,13 @@ function load(): BoardState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return EMPTY_STATE;
     const p = JSON.parse(raw) as Partial<BoardState>;
+    const loadedConfidence = p.confidence ?? EMPTY_CONFIDENCE;
     return {
       objectives: p.objectives ?? [],
-      confidence: p.confidence ?? EMPTY_CONFIDENCE,
+      confidence: {
+        ...loadedConfidence,
+        sackingRounds: loadedConfidence.sackingRounds ?? 0,
+      },
       currentSeason: p.currentSeason ?? null,
       clubId: p.clubId ?? null,
       pressHistory: p.pressHistory ?? [],
@@ -58,9 +62,11 @@ interface BoardContextType {
   confidence: BoardConfidence;
   pendingPress: PressEvent | null;
   pressHistory: BoardState["pressHistory"];
+  isSacked: boolean;
+  sackingThreshold: number;
 
   ensureSeasonObjectives: (club: Club, season: number) => void;
-  trackMatch: (match: MatchResult, playerClubId: number, difficulty?: "easy" | "medium" | "hard") => void;
+  trackMatch: (match: MatchResult, playerClubId: number, difficulty?: "easy" | "medium" | "hard") => BoardObjective[];
   updateStandingPosition: (position: number) => void;
   chooseResponse: (choice: PressChoice) => void;
   dismissPress: () => void;
@@ -81,6 +87,8 @@ export function useBoard() {
 export function BoardProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<BoardState>(() => load());
   const [pendingPress, setPendingPress] = useState<PressEvent | null>(null);
+  const [isSacked, setIsSacked] = useState(false);
+  const [sackingThreshold, setSackingThreshold] = useState(3);
   const holdRef = useRef(false);
   const queuedPressRef = useRef<PressEvent | null>(null);
 
@@ -100,8 +108,15 @@ export function BoardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const trackMatch = useCallback((match: MatchResult, playerClubId: number, difficulty?: "easy" | "medium" | "hard") => {
+    const nextSackingThreshold = difficulty === "easy" ? 5 : difficulty === "hard" ? 2 : 3;
+    setSackingThreshold(nextSackingThreshold);
+    
+    let newlyAchieved: BoardObjective[] = [];
+    
     setState(prev => {
-      const { objectives } = updateObjectivesFromMatch(prev.objectives, match, playerClubId);
+      const updateResult = updateObjectivesFromMatch(prev.objectives, match, playerClubId);
+      newlyAchieved = updateResult.newlyAchieved;
+      const { objectives } = updateResult;
       let { delta, reason } = confidenceDeltaFromMatch(match, playerClubId);
       
       if (difficulty === "hard") {
@@ -118,9 +133,27 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       }
       
       const date = new Date().toISOString().split("T")[0];
-      const confidence = adjustConfidence(prev.confidence, delta, reason, date);
+      const baseConfidence = adjustConfidence(prev.confidence, delta, reason, date);
+      
+      // Sacking counter: count consecutive rounds with confidence <= 0
+      const nextSackingRounds = baseConfidence.value <= 0
+        ? (prev.confidence.value <= 0 ? prev.confidence.sackingRounds : 0) + 1
+        : 0;
+      
+      const confidence: BoardConfidence = {
+        ...baseConfidence,
+        sackingRounds: nextSackingRounds,
+      };
+      
+      // Check sacking outside of setState
+      if (nextSackingRounds >= nextSackingThreshold) {
+        queueMicrotask(() => setIsSacked(true));
+      }
+      
       return { ...prev, objectives, confidence };
     });
+    
+    return newlyAchieved;
 
     // Trigger press conference
     const isHome = match.homeClub.id === playerClubId;
@@ -140,10 +173,10 @@ export function BoardProvider({ children }: { children: ReactNode }) {
     else if (diff < 0 && Math.random() < 0.4) ctx = "loss";
 
     if (ctx) {
-      const q = pickPressQuestion(ctx);
+      const q = pickPressQuestion(ctx as PressEvent["question"]["context"]);
       if (q) {
         const evt: PressEvent = {
-          question: q,
+          question: q!,
           matchOpponent: opponentName,
           matchResult: `${my}×${op}`,
           date: new Date().toISOString().split("T")[0],
@@ -201,7 +234,7 @@ export function BoardProvider({ children }: { children: ReactNode }) {
 
   const dismissPress = useCallback(() => setPendingPress(null), []);
 
-  const resetBoard = useCallback(() => { setState(EMPTY_STATE); setPendingPress(null); }, []);
+  const resetBoard = useCallback(() => { setState(EMPTY_STATE); setPendingPress(null); setIsSacked(false); }, []);
 
   const adjustBoardConfidence = useCallback((delta: number, reason: string) => {
     const date = new Date().toISOString().split("T")[0];
@@ -217,6 +250,8 @@ export function BoardProvider({ children }: { children: ReactNode }) {
       confidence: state.confidence,
       pendingPress,
       pressHistory: state.pressHistory,
+      isSacked,
+      sackingThreshold,
       ensureSeasonObjectives,
       trackMatch,
       updateStandingPosition,

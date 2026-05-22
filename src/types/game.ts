@@ -84,6 +84,8 @@ export interface Player {
   playtimePromiseMatches?: number;
   playtimePromiseStarts?: number;
   strikeDays?: number;
+  contractYears?: number;
+  contractExpiry?: string; // YYYY-MM-DD
 }
 
 export interface Sponsor {
@@ -116,6 +118,7 @@ export interface Club {
   youthAcademy?: Player[];
   scoutReports?: Record<number, string>; // Cache for AI scout reports
   difficulty?: "easy" | "medium" | "hard";
+  fanSatisfaction?: number; // 0-100
 }
 
 export interface BoardObjective {

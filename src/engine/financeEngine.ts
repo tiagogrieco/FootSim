@@ -1,5 +1,7 @@
 import type { Player } from "../types/game";
 import type { Club } from "../types/game";
+import type { MatchResult } from "./matchEngine";
+import { findRivalry } from "../data/rivalries";
 
 export interface FinancialRecord {
   month: number;
@@ -50,8 +52,9 @@ export function calculateFinancialSummary(
 
 export function calculateMatchDayRevenue(club: Club, isHome: boolean): number {
   if (!isHome) return 0;
-  const baseTicket = club.reputation * 1500;
-  const attendance = Math.floor(club.infrastructure * 500 + Math.random() * 8000);
+  const fanMultiplier = 0.5 + ((club.fanSatisfaction ?? 50) / 200);
+  const baseTicket = club.reputation * 1500 * fanMultiplier;
+  const attendance = Math.floor(club.infrastructure * 500 * fanMultiplier + Math.random() * 8000);
   return Math.floor(baseTicket + attendance * 25);
 }
 
@@ -111,4 +114,24 @@ export function formatCurrency(value: number): string {
     return `R$ ${(value / 1_000).toFixed(0)}K`;
   }
   return `R$ ${value.toLocaleString("pt-BR")}`;
+}
+
+export function updateFanSatisfaction(
+  current: number,
+  match: MatchResult,
+  playerClubId: number
+): number {
+  const isHome = match.homeClub.id === playerClubId;
+  const my = isHome ? match.homeGoals : match.awayGoals;
+  const op = isHome ? match.awayGoals : match.homeGoals;
+  const diff = my - op;
+  const opponentId = isHome ? match.awayClub.id : match.homeClub.id;
+  const isDerby = !!findRivalry(playerClubId, opponentId);
+
+  const baseDelta = diff >= 4 ? 8 : diff > 0 ? 4 + diff : diff === 0 ? 0 : diff >= -2 ? -3 + diff : -8;
+  const derbyDelta = isDerby ? (diff > 0 ? 10 : diff < 0 ? -10 : 0) : 0;
+  const delta = baseDelta + derbyDelta;
+
+  // Clamp to 0-100
+  return Math.max(0, Math.min(100, current + delta));
 }

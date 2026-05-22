@@ -30,6 +30,7 @@ export interface BoardConfidence {
   label: "trust" | "neutral" | "concerned" | "critical" | "sacking";
   trend: "up" | "down" | "stable";
   history: { date: string; delta: number; reason: string }[];
+  sackingRounds: number; // rounds with confidence <= 0 (consecutive)
 }
 
 export interface PressChoice {
@@ -64,4 +65,5 @@ export const EMPTY_CONFIDENCE: BoardConfidence = {
   label: "neutral",
   trend: "stable",
   history: [],
+  sackingRounds: 0,
 };

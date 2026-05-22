@@ -61,7 +61,10 @@ export function simulateMatchDay(
       const squad = newSquads.get(clubId);
       if (!squad) continue;
 
+      const teamGoals = team === "home" ? result.homeGoals : result.awayGoals;
       const opponentGoals = team === "home" ? result.awayGoals : result.homeGoals;
+      const didWin = teamGoals > opponentGoals;
+      const didDraw = teamGoals === opponentGoals;
       const goalEvents = result.events.filter(e => e.type === "goal" && e.team === team);
       const cardEvents = result.events.filter(e => (e.type === "yellow_card" || e.type === "red_card") && e.team === team);
       const injuryEvents = result.events.filter(e => e.type === "injury" && e.team === team);
@@ -73,6 +76,9 @@ export function simulateMatchDay(
         (!pl.strikeDays || pl.strikeDays <= 0)
       );
       const startersBeforeMatch = activeBeforeMatch.slice(0, 11);
+
+      // Team-wide morale shift based on result
+      const teamMoraleShift = didWin ? 3 : didDraw ? 0 : -5;
 
       newSquads.set(clubId, squad.map(p => {
         let fitness = p.fitness;
@@ -117,7 +123,8 @@ export function simulateMatchDay(
         }
 
         if (!impact) {
-          happiness = Math.max(10, happiness - 1); // benched = unhappy
+          happiness = Math.max(10, happiness - 2); // benched = unhappy (-2)
+          pMorale = Math.max(0, Math.min(100, pMorale + teamMoraleShift));
           return {
             ...p,
             seasonStats: stats,
@@ -167,6 +174,7 @@ export function simulateMatchDay(
 
         // Happiness: playing time + result + rating
         happiness = Math.min(100, happiness + 2 + (didWin ? 2 : didDraw ? 0 : -1) + (matchRating >= 7 ? 1 : 0));
+        pMorale = Math.max(0, Math.min(100, pMorale + teamMoraleShift));
         return {
           ...p,
           seasonStats: stats,

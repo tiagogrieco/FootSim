@@ -3,6 +3,7 @@ import {
   calcZoneStrengths, calcPossession, attackProgression,
   createMomentum, updateMomentum, tickMomentum,
   getAIMentality, getMentalityModifier, calcHomeAdvantage,
+  calculateTeamChemistry,
   type ZoneStrengths,
 } from "./matchZones";
 
@@ -225,6 +226,7 @@ export function simulateMatch(
   // V2: Zone-based strength + momentum + AI mentality
   const homeAdvantage = calcHomeAdvantage(homeClub.infrastructure);
   const momentum = createMomentum();
+  
   // Track dynamic possession across all minutes
   let possessionMinutesHome = 0;
   let possessionMinutesTotal = 0;
@@ -272,6 +274,49 @@ export function simulateMatch(
   const awayBench = awayPlayers.slice(11);
   let homeSubsUsed = 0;
   let awaySubsUsed = 0;
+
+  // Low morale players (< 15) may refuse to play — auto-sub if possible
+  function checkLowMorale(active: Player[], bench: Player[], team: "home" | "away") {
+    for (let i = active.length - 1; i >= 0; i--) {
+      const p = active[i];
+      if (p.morale < 15) {
+        const replacement = findBenchReplacement(bench, p.positionCategory);
+        if (replacement && homeSubsUsed < MAX_SUBS) {
+          active.splice(i, 1);
+          const benchIdx = bench.indexOf(replacement);
+          if (benchIdx >= 0) bench.splice(benchIdx, 1);
+          active.push(replacement);
+          if (team === "home") homeSubsUsed++; else awaySubsUsed++;
+          events.push({
+            minute: 0, type: "substitution", team,
+            playerName: p.name,
+            description: `${p.name} recusou entrar em campo (moral baixa)`,
+            commentary: `${p.name} está desmotivado e não quis jogar. ${replacement.name} entra no lugar.`,
+            importance: "high",
+          });
+        } else {
+          // No replacement, player plays with severe penalty
+          events.push({
+            minute: 0, type: "substitution", team,
+            playerName: p.name,
+            description: `${p.name} joga desmotivado (moral baixa)`,
+            commentary: `${p.name} está visivelmente desmotivado, mas não há substitutos no banco.`,
+            importance: "medium",
+          });
+        }
+      }
+    }
+  }
+  checkLowMorale(homeActive, homeBench, "home");
+  checkLowMorale(awayActive, awayBench, "away");
+  
+  // Team chemistry affects initial momentum
+  const homeChemistry = calculateTeamChemistry(homeActive);
+  const awayChemistry = calculateTeamChemistry(awayActive);
+  const chemistryDiff = (homeChemistry - awayChemistry) / 100;
+  momentum.home += chemistryDiff * 0.05;
+  momentum.away -= chemistryDiff * 0.05;
+  
   const MAX_SUBS = 5;
   const homeYellows = new Map<number, number>(); // playerId → yellow count
   const awayYellows = new Map<number, number>();
