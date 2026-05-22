@@ -4,10 +4,11 @@
 import { useEffect, useRef } from "react";
 import { useGame } from "../context/GameContext";
 import { useMeta } from "../context/MetaContext";
+import { generateJobOffers } from "../engine/careerEngine";
 
 export default function MetaBridge() {
-  const { lastMatchResult, playerClub, currentDate, standings, seasonEndResult } = useGame();
-  const { trackMatch, trackBestPosition, syncChallengesForDate, trackTrophy } = useMeta();
+  const { lastMatchResult, playerClub, currentDate, standings, seasonEndResult, allClubs, setJobOffers } = useGame();
+  const { trackMatch, trackBestPosition, syncChallengesForDate, trackTrophy, profile } = useMeta();
 
   const lastMatchRef = useRef<typeof lastMatchResult>(null);
   const lastSeasonRef = useRef<typeof seasonEndResult>(null);
@@ -31,7 +32,7 @@ export default function MetaBridge() {
     if (idx >= 0) trackBestPosition(idx + 1);
   }, [standings, playerClub.id, trackBestPosition]);
 
-  // Track trophies on season end
+  // Track trophies on season end + generate job offers
   useEffect(() => {
     if (!seasonEndResult) return;
     if (lastSeasonRef.current === seasonEndResult) return;
@@ -39,7 +40,13 @@ export default function MetaBridge() {
     const r = seasonEndResult as unknown as { wonLeague?: boolean; wonCup?: boolean };
     if (r.wonLeague) trackTrophy();
     if (r.wonCup) trackTrophy();
-  }, [seasonEndResult, trackTrophy]);
+    
+    // Generate job offers based on season performance
+    const isRelegated = seasonEndResult.relegated;
+    const position = seasonEndResult.finalPosition;
+    const offers = generateJobOffers(profile.managerReputation, allClubs, playerClub.id, position, isRelegated);
+    setJobOffers(offers);
+  }, [seasonEndResult, trackTrophy, profile.managerReputation, allClubs, playerClub.id, setJobOffers]);
 
   return null;
 }
