@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useGame } from "../context/GameContext";
+import { useMeta } from "../context/MetaContext";
 import { useTranslation } from "../context/I18nContext";
 
 export default function TeamSelection() {
   const navigate = useNavigate();
   const { allClubs, startNewGame } = useGame();
+  const { resetMeta } = useMeta();
   const { t } = useTranslation();
 
   const [selectedLeague, setSelectedLeague] = useState<string>("Série A");
@@ -24,6 +26,7 @@ export default function TeamSelection() {
     e.preventDefault();
     if (!customName.trim() || !customShortName.trim()) return;
     
+    resetMeta();
     startNewGame(undefined, {
       name: customName.trim(),
       shortName: customShortName.trim().substring(0, 3).toUpperCase(),
@@ -53,6 +56,7 @@ export default function TeamSelection() {
   const handleSelectClub = (clubId: number) => {
     const club = allClubs.find(c => c.id === clubId);
     if (club && isClubLocked(club)) return;
+    resetMeta();
     startNewGame(clubId, undefined, roadToGlory, difficulty);
     navigate("/presentation");
   };

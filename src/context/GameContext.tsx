@@ -23,7 +23,7 @@ import { simulateMatchDay } from "../engine/matchDayEngine";
 // getTotalRounds moved to useMatchManager
 import { addXP } from "../engine/rpgEngine";
 import { useBoard } from "./BoardContext";
-import { useMeta } from "./MetaContext";
+
 import { useToast } from "../hooks/useToast";
 import clubsData from "../data/clubs.json";
 
@@ -166,7 +166,6 @@ export function useGame(): GameContextType {
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const { confidence, adjustBoardConfidence, resetBoard, isSacked } = useBoard();
-  const { resetMeta } = useMeta();
   const { push: pushToast } = useToast();
   const [playerClub, setPlayerClub] = useState<Club>(clubsData[0] as Club);
   const [allClubs, setAllClubs] = useState<Club[]>(clubsData as Club[]);
@@ -452,7 +451,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     inboxManager.clearNotification();
     setSponsorOffers([]);
     setJobOffers([]);
-    resetMeta();
     resetBoard();
     setGameStarted(true);
     pushToast({ title: "Novo jogo iniciado!", message: `Você assumiu o comando do ${initialClub.name}. Boa sorte, treinador!`, type: "success" });
@@ -480,7 +478,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
       autoSave(data);
     }, 500);
-  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast, resetMeta, resetBoard]);
+  }, [squadManager, matchManager, seasonManager, financeManager, transferManager, inboxManager, pushToast, resetBoard]);
 
   const advanceDay = useCallback(() => {
     const oldMonth = new Date(seasonManager.currentDate).getMonth();
